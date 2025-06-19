@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 export interface AuthRequest extends Request {
   user?: {
     id: string;
-    type: 'user' | 'artisan';
+    type: 'user' | 'artisan' | 'admin';
   };
 }
 
@@ -40,4 +40,11 @@ export const isUser = (req: AuthRequest, res: Response, next: NextFunction) => {
     return res.status(403).json({ message: 'Access denied. User only.' });
   }
   next();
-}; 
+};
+
+export const isAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (req.user?.type !== 'admin') {
+    return res.status(403).json({ message: 'Access denied. Admin only.' });
+  }
+  next();
+};

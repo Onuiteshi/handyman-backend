@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { body } from 'express-validator';
-import { authMiddleware, isAdmin, isArtisan } from '../middleware/auth.middleware';
+import { body, param } from 'express-validator';
+import { authMiddleware, isArtisan, isAdmin } from '../middleware/auth.middleware';
 import {
   createCategory,
   getAllCategories,
@@ -10,45 +10,86 @@ import {
   addCategoryToArtisan,
   removeCategoryFromArtisan,
 } from '../controllers/serviceCategory.controller';
-import { handleValidationErrors } from '../middleware/validation.middleware';
+import { validate } from '../middleware/validation.middleware';
 
 const router = Router();
 
 // Validation middleware
+// Validation rules
 const validateCategory = [
-  body('name').trim().notEmpty().withMessage('Name is required'),
-  body('description').optional().trim(),
+  body('name')
+    .trim()
+    .notEmpty()
+    .withMessage('Name is required')
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Name must be between 2 and 100 characters'),
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Description cannot exceed 500 characters')
+];
+
+const validateCategoryId = [
+  param('id')
+    .isUUID()
+    .withMessage('Invalid category ID')
+];
+
+const validateCategoryIdParam = [
+  param('categoryId')
+    .isUUID()
+    .withMessage('Invalid category ID')
 ];
 
 // Public routes
 router.get('/', getAllCategories);
-router.get('/:id', getCategoryById);
+
+router.get(
+  '/:id',
+  validate(validateCategoryId),
+  getCategoryById
+);
 
 // Admin protected routes
 router.post(
   '/',
-  [authMiddleware, isAdmin, ...validateCategory, handleValidationErrors],
+  authMiddleware,
+  isAdmin,
+  ...validate(validateCategory),
   createCategory
 );
 
 router.put(
   '/:id',
-  [authMiddleware, isAdmin, ...validateCategory, handleValidationErrors],
+  authMiddleware,
+  isAdmin,
+  ...validate([...validateCategoryId, ...validateCategory]),
   updateCategory
 );
 
-router.delete('/:id', [authMiddleware, isAdmin], deleteCategory);
+router.delete(
+  '/:id',
+  authMiddleware,
+  isAdmin,
+  ...validate(validateCategoryId),
+  deleteCategory
+);
 
 // Artisan category management
 router.post(
   '/:categoryId/artisan',
-  [authMiddleware, isArtisan],
+  authMiddleware,
+  isArtisan,
+  ...validate(validateCategoryIdParam),
   addCategoryToArtisan
 );
 
 router.delete(
   '/:categoryId/artisan',
-  [authMiddleware, isArtisan],
+  authMiddleware,
+  isArtisan,
+  ...validate(validateCategoryIdParam),
   removeCategoryFromArtisan
 );
 
