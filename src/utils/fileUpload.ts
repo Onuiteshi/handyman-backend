@@ -3,12 +3,12 @@ import multer, { FileFilterCallback, diskStorage, Options as MulterOptions } fro
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 
-declare global {
-  namespace Express {
-    interface MulterRequest extends Request {
-      file?: Express.Multer.File;
-    }
-  }
+export interface MulterRequest extends Request {
+  file?: Express.Multer.File;
+  user?: {
+    id: string;
+    role: string;
+  };
 }
 
 // Configure storage

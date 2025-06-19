@@ -5,6 +5,9 @@ import fs from 'fs';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { MulterRequest } from '../utils/fileUpload';
 
+// Extend MulterRequest with AuthRequest properties
+type UploadRequest = MulterRequest & AuthRequest;
+
 const uploadDir = path.join(__dirname, '../../uploads');
 
 // Ensure upload directory exists
@@ -13,7 +16,7 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 export const uploadArtisanPhoto = async (
-  req: MulterRequest & AuthRequest,
+  req: UploadRequest,
   res: Response,
   next: NextFunction
 ) => {
@@ -58,7 +61,7 @@ export const uploadArtisanPhoto = async (
 };
 
 export const uploadIdDocument = async (
-  req: MulterRequest & AuthRequest,
+  req: UploadRequest,
   res: Response,
   next: NextFunction
 ) => {
