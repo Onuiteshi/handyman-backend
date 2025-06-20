@@ -222,4 +222,44 @@ router.post('/artisan/login', [...validateLogin, handleValidationErrors], async 
   }
 });
 
+// Admin login (for development only, should be protected in production)
+router.post('/admin/login', [...validateLogin, handleValidationErrors], async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email, password } = req.body;
+
+    // Find admin user
+    const admin = await prisma.user.findUnique({
+      where: { email, role: 'ADMIN' }
+    });
+
+    if (!admin) {
+      res.status(401).json({ message: 'Invalid credentials' });
+      return;
+    }
+
+    // Check password
+    const isMatch = await comparePassword(password, admin.password);
+    if (!isMatch) {
+      res.status(401).json({ message: 'Invalid credentials' });
+      return;
+    }
+
+    // Generate token with admin role
+    const token = generateToken(admin.id, 'admin', 'ADMIN');
+
+    res.json({
+      message: 'Admin login successful',
+      token,
+      user: {
+        id: admin.id,
+        email: admin.email,
+        name: admin.name,
+        role: 'ADMIN'
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router; 

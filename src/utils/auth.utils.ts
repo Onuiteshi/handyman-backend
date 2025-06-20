@@ -10,14 +10,20 @@ export const comparePassword = async (password: string, hashedPassword: string):
   return bcrypt.compare(password, hashedPassword);
 };
 
-export const generateToken = (id: string, type: 'user' | 'artisan'): string => {
+export interface TokenPayload {
+  id: string;
+  type: 'user' | 'artisan' | 'admin';
+  role?: 'USER' | 'ARTISAN' | 'ADMIN';
+}
+
+export const generateToken = (id: string, type: 'user' | 'artisan' | 'admin', role: 'USER' | 'ARTISAN' | 'ADMIN' = 'USER'): string => {
   return jwt.sign(
-    { id, type },
+    { id, type, role },
     process.env.JWT_SECRET || 'your-secret-key',
     { expiresIn: '7d' }
   );
 }; 
 
-export function verifyToken(token: string) {
-  return jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+export function verifyToken(token: string): TokenPayload {
+  return jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as TokenPayload;
 }

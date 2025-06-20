@@ -22,35 +22,25 @@ const isValidationError = (error: unknown): error is Result<ValidationError> => 
 /**
  * Middleware to handle validation errors from express-validator
  */
-export const handleValidationErrors = (
-  req: AuthRequest,
-  res: Response<ValidationErrorResponse>,
+export const handleValidationErrors: RequestHandler = (
+  req: Request,
+  res: Response,
   next: NextFunction
-): Response<ValidationErrorResponse> | void => {
-  try {
-    const errors: Result<ValidationError> = validationResult(req);
-    
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        errors: errors.array().map((err: ValidationError) => ({
-          field: err.param || 'unknown',
-          message: err.msg || 'Validation error',
-        })),
-      });
-    }
-    
-    next();
-  } catch (error) {
-    console.error('Validation error:', error);
-    return res.status(500).json({
+): void => {
+  const errors: Result<ValidationError> = validationResult(req);
+  
+  if (!errors.isEmpty()) {
+    res.status(400).json({
       success: false,
-      errors: [{
-        field: 'server',
-        message: 'An error occurred during validation',
-      }],
+      errors: errors.array().map((err: any) => ({
+        field: err.param || 'unknown',
+        message: err.msg || 'Validation error',
+      })),
     });
+    return;
   }
+  
+  next();
 };
 
 /**

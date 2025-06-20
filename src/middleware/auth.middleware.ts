@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
 
 export interface AuthRequest extends Request {
@@ -8,7 +8,19 @@ export interface AuthRequest extends Request {
   };
 }
 
-export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
+// Extend the Request type to include our custom properties
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        type: 'user' | 'artisan' | 'admin';
+      };
+    }
+  }
+}
+
+export const authMiddleware: RequestHandler = (req: Request, res: Response, next: NextFunction) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     

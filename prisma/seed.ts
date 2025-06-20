@@ -1,9 +1,47 @@
-import { PrismaClient } from '../src/generated/prisma';
+import { PrismaClient, UserRole } from '../src/generated/prisma';
 import * as bcrypt from 'bcryptjs';
+import { hashPassword } from '../src/utils/auth.utils';
 
 const prisma = new PrismaClient();
 
+async function createAdminUser(prisma: PrismaClient) {
+  const adminEmail = 'admin@handyman.com';
+  
+  // Check if admin already exists
+  const existingAdmin = await prisma.user.findUnique({
+    where: { email: adminEmail }
+  });
+
+  if (!existingAdmin) {
+    const hashedPassword = await hashPassword('admin123');
+    
+    await prisma.user.create({
+      data: {
+        email: adminEmail,
+        phone: '+2348000000000',
+        password: hashedPassword,
+        name: 'Admin User',
+        role: 'ADMIN',
+        profile: {
+          create: {
+            address: 'Admin Address',
+            city: 'Lagos',
+            state: 'Lagos',
+            country: 'Nigeria'
+          }
+        }
+      }
+    });
+    
+    console.log('Admin user created successfully');
+  } else {
+    console.log('Admin user already exists');
+  }
+}
+
 async function main() {
+  // Create admin user first
+  await createAdminUser(prisma);
   // Create service categories first
   const categories = await Promise.all([
     prisma.serviceCategory.create({

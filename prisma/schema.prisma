@@ -14,31 +14,43 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  USER
+  ARTISAN
+  ADMIN
+}
+
 model User {
   id            String    @id @default(uuid())
   email         String    @unique
   phone         String    @unique
   password      String
   name          String
+  role          UserRole  @default(USER)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   profile       Profile?
 }
 
 model Artisan {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  phone         String    @unique
-  password      String
-  name          String
-  experience    Int       // Years of experience
-  bio           String?
-  photoUrl      String?
-  idDocumentUrl String?   // URL to uploaded ID document
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  profile       Profile?
-  categories    ArtisanServiceCategory[]
+  id                String    @id @default(uuid())
+  email             String    @unique
+  phone             String    @unique
+  password          String
+  name              String
+  experience        Int       // Years of experience
+  bio               String?
+  photoUrl          String?
+  idDocumentUrl     String?   // URL to uploaded ID document
+  isOnline          Boolean   @default(false)
+  locationTracking  Boolean   @default(false)
+  latitude          Float?
+  longitude         Float?
+  lastSeen          DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  profile           Profile?
+  categories        ArtisanServiceCategory[]
 }
 
 model Profile {

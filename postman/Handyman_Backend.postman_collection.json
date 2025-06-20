@@ -6,6 +6,111 @@
   },
   "item": [
     {
+      "name": "Artisan Status",
+      "description": "Artisan status and location tracking endpoints",
+      "item": [
+        {
+          "name": "Get Artisan Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{artisan_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/artisan/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "artisan", "status"]
+            },
+            "description": "Get the current status and location of the authenticated artisan"
+          }
+        },
+        {
+          "name": "Update Online Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{artisan_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isOnline\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/artisan/online-status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "artisan", "online-status"]
+            },
+            "description": "Toggle the artisan's online status"
+          }
+        },
+        {
+          "name": "Update Location Consent",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{artisan_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locationTracking\": true,\n  \"latitude\": 40.7128,\n  \"longitude\": -74.0060\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/artisan/location-consent",
+              "host": ["{{base_url}}"],
+              "path": ["api", "artisan", "location-consent"]
+            },
+            "description": "Update location tracking consent and set initial location"
+          }
+        },
+        {
+          "name": "Update Location",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{artisan_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 40.7128,\n  \"longitude\": -74.0060\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/artisan/location",
+              "host": ["{{base_url}}"],
+              "path": ["api", "artisan", "location"]
+            },
+            "description": "Update the artisan's current location"
+          }
+        }
+      ]
+    },
+    {
       "name": "Auth",
       "description": "Authentication endpoints",
       "item": [
@@ -449,7 +554,7 @@
   "variable": [
     {
       "key": "base_url",
-      "value": "http://localhost:3000",
+      "value": "http://localhost:8000"
       "type": "string"
     },
     {
