@@ -1,0 +1,692 @@
+import request from 'supertest';
+import { app } from '../index';
+import { prisma } from '../__mocks__/@prisma/client';
+import { testUsers, mockCategory, mockArtisan } from './testUtils';
+
+// Alias prisma to prismaMock for backward compatibility
+const prismaMock = prisma;
+
+// Mock JWT verification
+jest.mock('jsonwebtoken', () => ({
+  sign: jest.fn(() => 'mock-jwt-token'),
+  verify: jest.fn((token, secret, callback) => {
+    if (token === 'invalid-token') {
+      return callback(new Error('Invalid token'));
+    }
+    const user = Object.values(testUsers).find(u => u.token === token);
+    if (user) {
+      return callback(null, { id: user.id, type: user.type });
+    }
+    return callback(new Error('User not found'));
+  }),
+}));
+
+// Setup mock data
+beforeEach(() => {
+  // Reset all mocks
+  jest.clearAllMocks();
+  
+  // Setup default mock implementations
+  prisma.serviceCategory.findMany.mockResolvedValue([mockCategory]);
+  prisma.serviceCategory.findUnique.mockResolvedValue(mockCategory);
+  prisma.serviceCategory.create.mockResolvedValue(mockCategory);
+  prisma.serviceCategory.update.mockResolvedValue(mockCategory);
+  prisma.serviceCategory.delete.mockResolvedValue(mockCategory);
+  
+  prisma.artisan.findUnique.mockResolvedValue(mockArtisan);
+  prisma.artisanServiceCategory.findUnique.mockResolvedValue(null);
+  prisma.artisanServiceCategory.create.mockResolvedValue({
+    id: 'test-artisan-category-id',
+    artisanId: mockArtisan.id,
+    categoryId: mockCategory.id,
+  });
+});
+
+// Helper function to get auth header
+const getAuthHeader = (token: string) => ({
+  Authorization: `Bearer ${token}`,
+});
+
+describe('Service Category API', () => {
+  // Reset all mocks before each test
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('GET /api/service-categories', () => {
+    it('should return all categories', async () => {
+      const categories = [
+        { ...mockCategory, id: '1', name: 'Plumbing', description: 'Plumbing services' },
+        { ...mockCategory, id: '2', name: 'Electrical', description: 'Electrical services' },
+      ];
+
+      prismaMock.serviceCategory.findMany.mockResolvedValueOnce(categories);
+
+      const response = await request(app)
+        .get('/api/service-categories')
+        .expect(200);
+
+      expect(response.body).toEqual(expect.objectContaining({
+        success: true,
+        data: expect.arrayContaining([
+          expect.objectContaining({ id: '1', name: 'Plumbing' }),
+          expect.objectContaining({ id: '2', name: 'Electrical' })
+        ])
+      }));
+    });
+
+    it('should return 500 if there is an error', async () => {
+      prismaMock.serviceCategory.findMany.mockRejectedValueOnce(new Error('Database error'));
+
+      const response = await request(app)
+        .get('/api/service-categories')
+        .expect(500);
+
+      expect(response.body).toEqual({
+        success: false,
+        error: 'Failed to fetch categories',
+      });
+    });
+  });
+
+  describe('POST /api/service-categories', () => {
+    const newCategory = {
+      name: 'New Category',
+      description: 'New category description',
+    };
+
+    it('should create a new category (admin only)', async () => {
+      const createdCategory = {
+        ...newCategory,
+        id: 'new-cat-id',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      prismaMock.serviceCategory.create.mockResolvedValueOnce(createdCategory);
+
+      const response = await request(app)
+        .post('/api/service-categories')
+        .set(getAuthHeader(testUsers.admin.token))
+        .send(newCategory)
+        .expect(201);
+
+      expect(response.body).toEqual(expect.objectContaining({
+        success: true,
+        data: expect.objectContaining({
+          id: 'new-cat-id',
+          name: 'New Category',
+          description: 'New category description'
+        })
+      }));
+    });
+
+    it('should return 400 for invalid input', async () => {
+      const response = await request(app)
+        .post('/api/service-categories')
+        .set(getAuthHeader(testUsers.admin.token))
+        .send({}) // Missing required name field
+        .expect(400);
+
+      expect(response.body).toEqual(expect.objectContaining({
+        success: false,
+        error: 'Name is required',
+      }));
+    });
+
+    it('should return 403 for non-admin users', async () => {
+      const response = await request(app)
+        .post('/api/service-categories')
+        .set(getAuthHeader(testUsers.user.token))
+        .send({ name: 'New Category' })
+        .expect(403);
+
+      expect(response.body).toEqual({
+        success: false,
+        error: 'Access denied. Admin only.',
+      });
+    });
+  });
+
+  describe('GET /api/service-categories/:id', () => {
+    it('should return a category by ID', async () => {
+      const categoryId = 'test-category-id';
+      const testCategory = {
+        ...mockCategory,
+        id: categoryId,
+        name: 'Test Category',
+      };
+
+      prismaMock.serviceCategory.findUnique.mockResolvedValueOnce(testCategory);
+
+      const response = await request(app)
+        .get(`/api/service-categories/${categoryId}`)
+        .expect(200);
+
+      expect(response.body).toEqual(expect.objectContaining({
+        success: true,
+        data: expect.objectContaining({
+          id: categoryId,
+          name: 'Test Category'
+        })
+      }));
+    });
+
+    it('should return 404 for non-existent category', async () => {
+      prismaMock.serviceCategory.findUnique.mockResolvedValueOnce(null);
+
+      const response = await request(app)
+        .get('/api/service-categories/non-existent-id')
+        .expect(404);
+      
+      expect(response.body).toEqual({
+        success: false,
+        error: 'Category not found',
+      });
+    });
+  });
+
+  describe('PUT /api/service-categories/:id', () => {
+    const updatedData = {
+      name: 'Updated Category',
+      description: 'Updated description',
+    };
+
+    it('should update a category (admin only)', async () => {
+      const updatedCategory = {
+        ...mockCategory,
+        ...updatedData,
+      };
+
+      prismaMock.serviceCategory.update.mockResolvedValueOnce(updatedCategory);
+
+      const response = await request(app)
+        .put(`/api/service-categories/${mockCategory.id}`)
+        .set(getAuthHeader(testUsers.admin.token))
+        .send(updatedData)
+        .expect(200);
+
+      expect(response.body).toEqual(expect.objectContaining({
+        success: true,
+        data: expect.objectContaining({
+          name: 'Updated Category',
+          description: 'Updated description'
+        })
+      }));
+    });
+
+    it('should return 400 for invalid input', async () => {
+      const response = await request(app)
+        .put(`/api/service-categories/${mockCategory.id}`)
+        .set(getAuthHeader(testUsers.admin.token))
+        .send({ name: '' }) // Invalid: empty name
+        .expect(400);
+
+      expect(response.body).toEqual(expect.objectContaining({
+        success: false,
+        error: 'Name is required',
+      }));
+    });
+
+    it('should return 403 for non-admin users', async () => {
+      const response = await request(app)
+        .put(`/api/service-categories/${mockCategory.id}`)
+        .set(getAuthHeader(testUsers.user.token))
+        .send(updatedData)
+        .expect(403);
+
+      expect(response.body).toEqual({
+        success: false,
+        error: 'Access denied. Admin only.',
+      });
+    });
+  });
+
+  describe('DELETE /api/service-categories/:id', () => {
+    it('should delete a category (admin only)', async () => {
+      prismaMock.serviceCategory.delete.mockResolvedValueOnce(mockCategory);
+
+      const response = await request(app)
+        .delete(`/api/service-categories/${mockCategory.id}`)
+        .set(getAuthHeader(testUsers.admin.token))
+        .expect(200);
+
+      expect(response.body).toEqual({
+        success: true,
+        data: { id: mockCategory.id },
+      });
+
+      expect(prismaMock.serviceCategory.delete).toHaveBeenCalledWith({
+        where: { id: mockCategory.id },
+      });
+    });
+
+    it('should return 403 for non-admin users', async () => {
+      const response = await request(app)
+        .delete(`/api/service-categories/${mockCategory.id}`)
+        .set(getAuthHeader(testUsers.user.token))
+        .expect(403);
+
+      expect(response.body).toEqual({
+        success: false,
+        error: 'Access denied. Admin only.',
+      });
+      expect(prismaMock.serviceCategory.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Artisan Category Management', () => {
+    describe('POST /api/artisans/:id/categories', () => {
+      it('should add a category to an artisan', async () => {
+        const artisanCategory = {
+          id: 'test-artisan-category-id',
+          artisanId: testUsers.artisan.id,
+          categoryId: mockCategory.id,
+        };
+
+        prismaMock.artisanServiceCategory.create.mockResolvedValueOnce(artisanCategory);
+
+        const response = await request(app)
+          .post(`/api/artisans/${testUsers.artisan.id}/categories`)
+          .set(getAuthHeader(testUsers.artisan.token))
+          .send({ categoryId: mockCategory.id })
+          .expect(201);
+
+        expect(response.body).toEqual(expect.objectContaining({
+          success: true,
+          data: expect.objectContaining({
+            artisanId: testUsers.artisan.id,
+            categoryId: mockCategory.id
+          })
+        }));
+      });
+
+      it('should return 400 if category already added', async () => {
+        prismaMock.artisanServiceCategory.findUnique.mockResolvedValueOnce({
+          id: 'existing-artisan-category-id',
+          artisanId: testUsers.artisan.id,
+          categoryId: mockCategory.id,
+        });
+
+        const response = await request(app)
+          .post(`/api/artisans/${testUsers.artisan.id}/categories`)
+          .set(getAuthHeader(testUsers.artisan.token))
+          .send({ categoryId: mockCategory.id })
+          .expect(400);
+
+        expect(response.body).toEqual({
+          success: false,
+          error: 'Category already added to artisan',
+        });
+      });
+    });
+
+    describe('DELETE /api/artisans/:artisanId/categories/:categoryId', () => {
+      it('should remove a category from an artisan', async () => {
+        prismaMock.artisanServiceCategory.delete.mockResolvedValueOnce({
+          id: 'test-artisan-category-id',
+          artisanId: testUsers.artisan.id,
+          categoryId: mockCategory.id,
+        });
+
+        const response = await request(app)
+          .delete(`/api/artisans/${testUsers.artisan.id}/categories/${mockCategory.id}`)
+          .set(getAuthHeader(testUsers.artisan.token))
+          .expect(200);
+
+        expect(response.body).toEqual({
+          success: true,
+          data: { id: 'test-artisan-category-id' },
+        });
+      });
+
+      it('should return 404 if category not found for artisan', async () => {
+        prismaMock.artisanServiceCategory.delete.mockRejectedValueOnce(
+          new Error('Record not found')
+        );
+
+        const response = await request(app)
+          .delete(`/api/artisans/${testUsers.artisan.id}/categories/non-existent-category`)
+          .set(getAuthHeader(testUsers.artisan.token))
+          .expect(404);
+
+        expect(response.body).toEqual({
+          success: false,
+          error: 'Category not found for this artisan',
+      const response = await request(app)
+        .get('/api/service-categories')
+        .expect(200);
+
+      expect(response.body).toEqual(expect.objectContaining({
+        success: true,
+        data: expect.arrayContaining([
+          expect.objectContaining({ id: '1', name: 'Plumbing' }),
+          expect.objectContaining({ id: '2', name: 'Electrical' })
+        ])
+      }));
+    });
+
+    it('should return 500 if there is an error', async () => {
+      prismaMock.serviceCategory.findMany.mockRejectedValueOnce(new Error('Database error'));
+
+      const response = await request(app)
+        .get('/api/service-categories')
+        .expect(500);
+
+      expect(response.body).toEqual({
+        success: false,
+        error: 'Failed to fetch categories',
+      });
+    });
+
+    it('should return an empty array if no categories exist', async () => {
+      prismaMock.serviceCategory.findMany.mockResolvedValueOnce([]);
+
+      const response = await request(app)
+        .get('/api/service-categories')
+        .expect(200);
+
+      expect(response.body).toEqual(expect.objectContaining({
+        success: true,
+        data: []
+      }));
+    });
+  });
+
+  describe('POST /api/service-categories', () => {
+    const newCategory = {
+      name: 'New Category',
+      description: 'New category description',
+    };
+
+    it('should create a new category (admin only)', async () => {
+      const createdCategory = {
+        ...newCategory,
+        id: 'new-cat-id',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      prismaMock.serviceCategory.create.mockResolvedValueOnce(createdCategory);
+
+      const response = await request(app)
+        .post('/api/service-categories')
+        .set(getAuthHeader(testUsers.admin.token))
+        .send(newCategory)
+        .expect(201);
+
+      expect(response.body).toEqual(expect.objectContaining({
+        success: true,
+        data: expect.objectContaining({
+          id: 'new-cat-id',
+          name: 'New Category',
+          description: 'New category description'
+        })
+      }));
+
+      expect(prismaMock.serviceCategory.create).toHaveBeenCalledWith({
+        data: newCategory,
+      });
+    });
+
+    it('should return 400 for invalid input', async () => {
+      const response = await request(app)
+        .post('/api/service-categories')
+        .set(getAuthHeader(testUsers.admin.token))
+        .send({}) // Missing required name field
+        .expect(400);
+
+      expect(response.body).toEqual(expect.objectContaining({
+        success: false,
+        error: 'Name is required',
+      }));
+    });
+
+    it('should return 403 for non-admin users', async () => {
+      const response = await request(app)
+        .post('/api/service-categories')
+        .set(getAuthHeader(testUsers.user.token))
+        .send({ name: 'New Category' })
+        .expect(403);
+
+      expect(response.body).toEqual({
+        success: false,
+        error: 'Access denied. Admin only.',
+      });
+      expect(prismaMock.serviceCategory.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('GET /api/service-categories/:id', () => {
+    it('should return a category by ID', async () => {
+      const categoryId = 'test-category-id';
+      const testCategory = {
+        ...mockCategory,
+        id: categoryId,
+        name: 'Test Category',
+      };
+
+      prismaMock.serviceCategory.findUnique.mockResolvedValueOnce(testCategory);
+
+      const response = await request(app)
+        .get(`/api/service-categories/${categoryId}`)
+        .expect(200);
+
+      expect(response.body).toEqual(expect.objectContaining({
+        success: true,
+        data: expect.objectContaining({
+          id: categoryId,
+          name: 'Test Category'
+        })
+      }));
+    });
+
+    it('should return 404 for non-existent category', async () => {
+      prismaMock.serviceCategory.findUnique.mockResolvedValueOnce(null);
+
+      const response = await request(app)
+        .get('/api/service-categories/non-existent-id')
+        .expect(404);
+      
+      expect(response.body).toEqual({
+        success: false,
+        error: 'Category not found',
+      });
+    });
+  });
+
+  describe('PUT /api/service-categories/:id', () => {
+    const updatedData = {
+      name: 'Updated Category',
+      description: 'Updated description',
+    };
+
+    it('should update a category (admin only)', async () => {
+      const updatedCategory = {
+        ...mockCategory,
+        ...updatedData,
+      };
+
+      prismaMock.serviceCategory.update.mockResolvedValueOnce(updatedCategory);
+
+      const response = await request(app)
+        .put(`/api/service-categories/${mockCategory.id}`)
+        .set(getAuthHeader(testUsers.admin.token))
+        .send(updatedData)
+        .expect(200);
+
+      expect(response.body).toEqual(expect.objectContaining({
+        success: true,
+        data: expect.objectContaining({
+          name: 'Updated Category',
+          description: 'Updated description'
+        })
+      }));
+
+      expect(prismaMock.serviceCategory.update).toHaveBeenCalledWith({
+        where: { id: mockCategory.id },
+        data: updatedData,
+      });
+    });
+
+    it('should return 400 for invalid input', async () => {
+      const response = await request(app)
+        .put(`/api/service-categories/${mockCategory.id}`)
+        .set(getAuthHeader(testUsers.admin.token))
+        .send({ name: '' }) // Invalid: empty name
+        .expect(400);
+
+      expect(response.body).toEqual(expect.objectContaining({
+        success: false,
+        error: 'Name is required',
+      }));
+    });
+
+    it('should return 403 for non-admin users', async () => {
+      const response = await request(app)
+        .put(`/api/service-categories/${mockCategory.id}`)
+        .set(getAuthHeader(testUsers.user.token))
+        .send(updatedData)
+        .expect(403);
+
+      expect(response.body).toEqual({
+        success: false,
+        error: 'Access denied. Admin only.',
+      });
+      expect(prismaMock.serviceCategory.update).not.toHaveBeenCalled();
+    });
+
+    it('should return 404 if category not found', async () => {
+      prismaMock.serviceCategory.update.mockRejectedValueOnce(
+        new Error('Record not found')
+      );
+
+      const response = await request(app)
+        .put('/api/service-categories/non-existent-id')
+        .set(getAuthHeader(testUsers.admin.token))
+        .send(updatedData)
+        .expect(404);
+
+      expect(response.body).toEqual({
+        success: false,
+        error: 'Category not found',
+      });
+    });
+  });
+
+  describe('DELETE /api/service-categories/:id', () => {
+    it('should delete a category (admin only)', async () => {
+      prismaMock.serviceCategory.delete.mockResolvedValueOnce(mockCategory);
+
+      const response = await request(app)
+        .delete(`/api/service-categories/${mockCategory.id}`)
+        .set(getAuthHeader(testUsers.admin.token))
+        .expect(200);
+
+      expect(response.body).toEqual({
+        success: true,
+        data: { id: mockCategory.id },
+      });
+
+      expect(prismaMock.serviceCategory.delete).toHaveBeenCalledWith({
+        where: { id: mockCategory.id },
+      });
+    });
+
+    it('should return 403 for non-admin users', async () => {
+      const response = await request(app)
+        .delete(`/api/service-categories/${mockCategory.id}`)
+        .set(getAuthHeader(testUsers.user.token))
+        .expect(403);
+
+      expect(response.body).toEqual({
+        success: false,
+        error: 'Access denied. Admin only.',
+      });
+      expect(prismaMock.serviceCategory.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Artisan Category Management', () => {
+    describe('POST /api/artisans/:id/categories', () => {
+      it('should add a category to an artisan', async () => {
+        const artisanCategory = {
+          id: 'test-artisan-category-id',
+          artisanId: testUsers.artisan.id,
+          categoryId: mockCategory.id,
+        };
+
+        prismaMock.artisanServiceCategory.create.mockResolvedValueOnce(artisanCategory);
+
+        const response = await request(app)
+          .post(`/api/artisans/${testUsers.artisan.id}/categories`)
+          .set(getAuthHeader(testUsers.artisan.token))
+          .send({ categoryId: mockCategory.id })
+          .expect(201);
+
+        expect(response.body).toEqual(expect.objectContaining({
+          success: true,
+          data: expect.objectContaining({
+            artisanId: testUsers.artisan.id,
+            categoryId: mockCategory.id
+          })
+        }));
+      });
+
+      it('should return 400 if category already added', async () => {
+        prismaMock.artisanServiceCategory.findUnique.mockResolvedValueOnce({
+          id: 'existing-artisan-category-id',
+          artisanId: testUsers.artisan.id,
+          categoryId: mockCategory.id,
+        });
+
+        const response = await request(app)
+          .post(`/api/artisans/${testUsers.artisan.id}/categories`)
+          .set(getAuthHeader(testUsers.artisan.token))
+          .send({ categoryId: mockCategory.id })
+          .expect(400);
+
+        expect(response.body).toEqual({
+          success: false,
+          error: 'Category already added to artisan',
+        });
+      });
+    });
+
+    describe('DELETE /api/artisans/:artisanId/categories/:categoryId', () => {
+      it('should remove a category from an artisan', async () => {
+        prismaMock.artisanServiceCategory.delete.mockResolvedValueOnce({
+          id: 'test-artisan-category-id',
+          artisanId: testUsers.artisan.id,
+          categoryId: mockCategory.id,
+        });
+
+        const response = await request(app)
+          .delete(`/api/artisans/${testUsers.artisan.id}/categories/${mockCategory.id}`)
+          .set(getAuthHeader(testUsers.artisan.token))
+          .expect(200);
+
+        expect(response.body).toEqual({
+          success: true,
+          data: { id: 'test-artisan-category-id' },
+        });
+      });
+
+      it('should return 404 if category not found for artisan', async () => {
+        prismaMock.artisanServiceCategory.delete.mockRejectedValueOnce(
+          new Error('Record not found')
+        );
+
+        const response = await request(app)
+          .delete(`/api/artisans/${testUsers.artisan.id}/categories/non-existent-category`)
+          .set(getAuthHeader(testUsers.artisan.token))
+          .expect(404);
+
+        expect(response.body).toEqual({
+          success: false,
+          error: 'Category not found for this artisan',
+        });
+      });
+    });
+  });
+});

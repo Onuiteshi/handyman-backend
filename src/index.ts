@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from './generated/prisma';
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import artisanRoutes from './routes/artisan.routes';
@@ -13,7 +13,11 @@ dotenv.config();
 
 const app = express();
 const prisma = new PrismaClient();
-const port = process.env.PORT || 3000;
+
+// Test database connection
+prisma.$connect()
+  .then(() => console.log('Successfully connected to the database'))
+  .catch((error) => console.error('Error connecting to the database:', error));
 
 // Middleware
 app.use(cors());
@@ -24,11 +28,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/artisans', artisanRoutes);
-app.use('/api/service-categories', serviceCategoryRoutes);
-app.use('/api/uploads', uploadRoutes);
+app.use('/api', [
+  { path: '/auth', router: authRoutes },
+  { path: '/users', router: userRoutes },
+  { path: '/artisans', router: artisanRoutes },
+  { path: '/service-categories', router: serviceCategoryRoutes },
+  { path: '/uploads', router: uploadRoutes },
+].map(route => app.use(route.path, route.router)));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -39,16 +45,22 @@ app.get('/health', (req, res) => {
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error(err.stack);
   res.status(err.status || 500).json({
-    error: {
-      message: err.message || 'Internal server error',
-      status: err.status || 500
-    }
+    success: false,
+    message: err.message || 'Internal server error',
+    status: err.status || 500
   });
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+// Export the Express app for testing
+export { app };
+
+// Start the server only if this file is run directly
+if (require.main === module) {
+  const port = process.env.PORT || 8000;
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+  });
+}
 
 // Handle graceful shutdown
 process.on('SIGTERM', async () => {
