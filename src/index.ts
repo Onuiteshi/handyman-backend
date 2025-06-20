@@ -2,17 +2,16 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
-import { PrismaClient } from './generated/prisma';
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import artisanRoutes from './routes/artisan.routes';
 import serviceCategoryRoutes from './routes/serviceCategory.routes';
 import uploadRoutes from './routes/upload.routes';
+import prisma from './lib/prisma';
 
 dotenv.config();
 
 const app = express();
-const prisma = new PrismaClient();
 
 // Test database connection
 prisma.$connect()
@@ -28,13 +27,16 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // API Routes
-app.use('/api', [
-  { path: '/auth', router: authRoutes },
-  { path: '/users', router: userRoutes },
-  { path: '/artisans', router: artisanRoutes },
-  { path: '/service-categories', router: serviceCategoryRoutes },
-  { path: '/uploads', router: uploadRoutes },
-].map(route => app.use(route.path, route.router)));
+const apiRouter = express.Router();
+
+// Mount all API routes
+apiRouter.use('/auth', authRoutes);
+apiRouter.use('/users', userRoutes);
+apiRouter.use('/artisans', artisanRoutes);
+apiRouter.use('/service-categories', serviceCategoryRoutes);
+apiRouter.use('/uploads', uploadRoutes);
+
+app.use('/api', apiRouter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
