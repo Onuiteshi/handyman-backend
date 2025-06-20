@@ -1,10 +1,11 @@
 import { Request, Response } from 'express';
-import prisma from '../lib/prisma'; // Import from centralized prisma instance
+import prisma from '../lib/prisma';
 
 interface AuthenticatedRequest extends Request {
   user: {
     id: string;
-    role: string;
+    type: 'user' | 'artisan' | 'admin';
+    role?: 'USER' | 'ARTISAN' | 'ADMIN';
   };
 }
 
