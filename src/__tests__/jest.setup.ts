@@ -1,3 +1,7 @@
+// Load environment variables from .env.test
+import { config } from 'dotenv';
+config({ path: '.env.test' });
+
 // Import test setup
 import './testSetup';
 
@@ -9,7 +13,8 @@ beforeAll(async () => {
   // Set the test environment variables
   process.env.NODE_ENV = 'test';
   process.env.JWT_SECRET = 'test-secret';
-  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/handyman_test';
+  // Use DATABASE_URL from .env.test file, with fallback
+  process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://handyman_user:handyman_password@localhost:5432/handyman_test';
 });
 
 // Reset all mocks between tests

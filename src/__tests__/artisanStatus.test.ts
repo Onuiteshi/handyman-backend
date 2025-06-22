@@ -1,200 +1,170 @@
 import request from 'supertest';
-import { app } from '../index'; // Update the import path to use the correct file
-import { prismaMock } from './testSetup';
-import { testUsers, getAuthHeader } from './testUtils';
+import { app } from '../index';
+import prisma from '../lib/prisma';
+
+let artisanToken: string;
+let artisanId: string;
+
+beforeAll(async () => {
+  // Clean up database
+  await prisma.oTPVerification.deleteMany({});
+  await prisma.customer.deleteMany({});
+  await prisma.artisan.deleteMany({});
+  await prisma.user.deleteMany({});
+
+  // 1. Signup as artisan
+  const signupRes = await request(app)
+    .post('/api/auth/signup')
+    .send({
+      identifier: 'artisanstatus@example.com',
+      name: 'Artisan Status',
+      role: 'ARTISAN'
+    });
+  expect(signupRes.status).toBe(200);
+
+  // 2. Get OTP from the response or database
+  const otpVerification = await prisma.oTPVerification.findFirst({
+    where: { identifier: 'artisanstatus@example.com' }
+  });
+  expect(otpVerification).toBeTruthy();
+
+  // 3. Verify OTP to complete signup and create artisan profile
+  const verifyRes = await request(app)
+    .post('/api/auth/verify-signup')
+    .send({
+      identifier: 'artisanstatus@example.com',
+      otp: otpVerification!.otp,
+      type: 'SIGNUP'
+    });
+  expect(verifyRes.status).toBe(200);
+  artisanToken = verifyRes.body.token;
+
+  // 4. Get the artisan ID from the created profile
+  const user = await prisma.user.findUnique({
+    where: { email: 'artisanstatus@example.com' },
+    include: { artisan: true }
+  });
+  expect(user).toBeTruthy();
+  expect(user!.artisan).toBeTruthy();
+  artisanId = user!.id;
+});
+
+afterAll(async () => {
+  await prisma.$disconnect();
+});
+
+beforeEach(async () => {
+  // Clean up artisan status fields for isolation if needed
+  // (Optional: reset fields if your tests modify them)
+});
+
+// Helper function to get auth header
+const getAuthHeader = (token: string) => ({
+  'Authorization': `Bearer ${token}`
+});
 
 describe('Artisan Status API', () => {
-  const artisanToken = testUsers.artisan.token;
-  const artisanId = testUsers.artisan.id;
-  
-  // Mock the Prisma client methods
-  const mockArtisan = {
-    id: artisanId,
-    isOnline: false,
-    locationTracking: false,
-    latitude: null,
-    longitude: null,
-    lastSeen: null,
-  };
-  
-  beforeEach(() => {
-    // Reset all mocks before each test
-    jest.clearAllMocks();
-    
-    // Default mock implementations
-    prismaMock.artisan.findUnique.mockResolvedValue(mockArtisan);
-    prismaMock.artisan.update.mockImplementation(({ data }:any) =>
-      Promise.resolve({ ...mockArtisan, ...data })
-    );
-  });
-
-  afterEach(() => {
-    // Reset all mocks after each test
-    jest.clearAllMocks();
-  });
-  
-  afterAll(() => {
-    // Clean up any resources if needed
-    jest.restoreAllMocks();
-  });
-
   describe('GET /api/artisan/status', () => {
     it('should return artisan status', async () => {
-      // Mock the findUnique response
-      prismaMock.artisan.findUnique.mockResolvedValueOnce({
-        ...mockArtisan,
-        isOnline: true,
-        locationTracking: true
+      // Enable online and location tracking for the artisan
+      await prisma.artisan.update({
+        where: { userId: artisanId },
+        data: { isOnline: true, locationTracking: true }
       });
-      
+
       const response = await request(app)
         .get('/api/artisan/status')
         .set(getAuthHeader(artisanToken));
 
       expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('success', true);
-      expect(response.body.data).toHaveProperty('isOnline', true);
-      expect(response.body.data).toHaveProperty('locationTracking', true);
-      
-      // Verify the correct method was called
-      expect(prismaMock.artisan.findUnique).toHaveBeenCalledWith({
-        where: { id: artisanId },
-        select: expect.any(Object)
-      });
+      expect(response.body).toHaveProperty('isOnline', true);
+      expect(response.body).toHaveProperty('locationTracking', true);
     });
-    
+
     it('should handle missing artisan', async () => {
-      // Mock the findUnique to return null (artisan not found)
-      prismaMock.artisan.findUnique.mockResolvedValueOnce(null);
-      
+      // Create a customer user with proper authentication
+      const customerSignupRes = await request(app)
+        .post('/api/auth/signup')
+        .send({
+          identifier: 'customer@example.com',
+          name: 'Customer User',
+          role: 'CUSTOMER'
+        });
+      expect(customerSignupRes.status).toBe(200);
+
+      // Get OTP for customer
+      const customerOtpVerification = await prisma.oTPVerification.findFirst({
+        where: { identifier: 'customer@example.com' }
+      });
+      expect(customerOtpVerification).toBeTruthy();
+
+      // Verify OTP to get customer token
+      const customerVerifyRes = await request(app)
+        .post('/api/auth/verify-signup')
+        .send({
+          identifier: 'customer@example.com',
+          otp: customerOtpVerification!.otp,
+          type: 'SIGNUP'
+        });
+      expect(customerVerifyRes.status).toBe(200);
+      const customerToken = customerVerifyRes.body.token;
+
       const response = await request(app)
         .get('/api/artisan/status')
-        .set(getAuthHeader(artisanToken));
-        
+        .set(getAuthHeader(customerToken));
+
       expect(response.status).toBe(404);
-      expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('message', 'Artisan not found');
+      expect(response.body).toHaveProperty('message', 'Artisan profile not found');
     });
   });
 
   describe('PUT /api/artisan/online-status', () => {
     it('should update online status', async () => {
-      // Mock the update response
-      const updatedArtisan = { ...mockArtisan, isOnline: true, lastSeen: new Date() };
-      prismaMock.artisan.update.mockResolvedValueOnce(updatedArtisan);
-      
       const response = await request(app)
         .put('/api/artisan/online-status')
         .set(getAuthHeader(artisanToken))
         .send({ isOnline: true });
 
       expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('success', true);
-      expect(response.body.data).toHaveProperty('isOnline', true);
-      
-      // Verify the update was called with correct parameters
-      expect(prismaMock.artisan.update).toHaveBeenCalledWith({
-        where: { id: artisanId },
-        data: { 
-          isOnline: true,
-          lastSeen: expect.any(Date)
-        },
-        select: expect.any(Object)
-      });
+      expect(response.body).toHaveProperty('message', 'Online status updated successfully');
+      expect(response.body).toHaveProperty('isOnline', true);
     });
 
     it('should validate request body', async () => {
       const response = await request(app)
         .put('/api/artisan/online-status')
         .set(getAuthHeader(artisanToken))
-        .send({ isOnline: 'not-a-boolean' });
+        .send({ isOnline: 'invalid' });
 
       expect(response.status).toBe(400);
       expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('message', 'Validation failed');
-      
-      // Verify no update was attempted
-      expect(prismaMock.artisan.update).not.toHaveBeenCalled();
+      expect(response.body.errors[0]).toHaveProperty('message', 'isOnline must be a boolean');
     });
   });
 
   describe('PUT /api/artisan/location-consent', () => {
     it('should update location tracking consent with valid data', async () => {
-      const testLocation = {
-        latitude: 40.7128,
-        longitude: -74.0060,
-        lastSeen: new Date()
-      };
-      
-      // Mock the update response
-      prismaMock.artisan.update.mockResolvedValueOnce({
-        ...mockArtisan,
-        ...testLocation,
-        locationTracking: true
-      });
-      
       const response = await request(app)
         .put('/api/artisan/location-consent')
         .set(getAuthHeader(artisanToken))
         .send({
-          locationTracking: true,
-          latitude: testLocation.latitude,
-          longitude: testLocation.longitude
+          locationTracking: true
         });
 
       expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('success', true);
-      expect(response.body.data).toHaveProperty('locationTracking', true);
-      expect(response.body.data.location).toEqual({
-        latitude: testLocation.latitude,
-        longitude: testLocation.longitude,
-        lastUpdated: expect.any(String)
-      });
-      
-      // Verify the update was called with correct parameters
-      expect(prismaMock.artisan.update).toHaveBeenCalledWith({
-        where: { id: artisanId },
-        data: {
-          locationTracking: true,
-          latitude: testLocation.latitude,
-          longitude: testLocation.longitude,
-          lastSeen: expect.any(Date)
-        },
-        select: expect.any(Object)
-      });
+      expect(response.body).toHaveProperty('message', 'Location tracking preference updated successfully');
+      expect(response.body).toHaveProperty('locationTracking', true);
     });
-    
+
     it('should disable location tracking when requested', async () => {
-      // Mock the update response
-      prismaMock.artisan.update.mockResolvedValueOnce({
-        ...mockArtisan,
-        locationTracking: false,
-        latitude: null,
-        longitude: null
-      });
-      
       const response = await request(app)
         .put('/api/artisan/location-consent')
         .set(getAuthHeader(artisanToken))
-        .send({
-          locationTracking: false
-        });
-        
+        .send({ locationTracking: false });
+
       expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('success', true);
-      expect(response.body.data).toHaveProperty('locationTracking', false);
-      expect(response.body.data).not.toHaveProperty('location');
-      
-      // Verify the update was called with correct parameters
-      expect(prismaMock.artisan.update).toHaveBeenCalledWith({
-        where: { id: artisanId },
-        data: {
-          locationTracking: false,
-          latitude: null,
-          longitude: null
-        },
-        select: expect.any(Object)
-      });
+      expect(response.body).toHaveProperty('message', 'Location tracking preference updated successfully');
+      expect(response.body).toHaveProperty('locationTracking', false);
     });
 
     it('should validate location data when enabling tracking', async () => {
@@ -202,107 +172,74 @@ describe('Artisan Status API', () => {
         .put('/api/artisan/location-consent')
         .set(getAuthHeader(artisanToken))
         .send({
-          locationTracking: true,
-          latitude: 'not-a-number',
-          longitude: 200 // Invalid longitude
+          locationTracking: 'invalid'
         });
 
       expect(response.status).toBe(400);
       expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('message', 'Validation failed');
-      
-      // Verify no update was attempted
-      expect(prismaMock.artisan.update).not.toHaveBeenCalled();
+      expect(response.body.errors[0]).toHaveProperty('message', 'locationTracking must be a boolean');
     });
   });
 
   describe('PUT /api/artisan/location', () => {
-    const testLocation = {
-      latitude: 34.0522,
-      longitude: -118.2437
-    };
-    
     it('should update location when tracking is enabled', async () => {
-      // Mock the findUnique to return an artisan with tracking enabled
-      prismaMock.artisan.findUnique.mockResolvedValueOnce({
-        ...mockArtisan,
-        locationTracking: true
+      // Enable location tracking first
+      await prisma.artisan.update({
+        where: { userId: artisanId },
+        data: { locationTracking: true }
       });
-      
-      // Mock the update response
-      const updatedArtisan = {
-        ...mockArtisan,
-        ...testLocation,
-        locationTracking: true,
-        lastSeen: new Date()
-      };
-      prismaMock.artisan.update.mockResolvedValueOnce(updatedArtisan);
 
       const response = await request(app)
         .put('/api/artisan/location')
         .set(getAuthHeader(artisanToken))
-        .send(testLocation);
+        .send({
+          latitude: 40.7128,
+          longitude: -74.0060
+        });
 
       expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('success', true);
-      expect(response.body.data.location).toEqual({
-        latitude: testLocation.latitude,
-        longitude: testLocation.longitude,
-        lastUpdated: expect.any(String)
-      });
-      
-      // Verify the update was called with correct parameters
-      expect(prismaMock.artisan.update).toHaveBeenCalledWith({
-        where: { 
-          id: artisanId,
-          locationTracking: true
-        },
-        data: {
-          latitude: testLocation.latitude,
-          longitude: testLocation.longitude,
-          lastSeen: expect.any(Date),
-          isOnline: true
-        },
-        select: expect.any(Object)
-      });
+      expect(response.body).toHaveProperty('message', 'Location updated successfully');
+      expect(response.body).toHaveProperty('latitude', 40.7128);
+      expect(response.body).toHaveProperty('longitude', -74.0060);
     });
 
     it('should return error when tracking is disabled', async () => {
-      // Mock the findUnique to return an artisan with tracking disabled
-      prismaMock.artisan.findUnique.mockResolvedValueOnce({
-        ...mockArtisan,
-        locationTracking: false
+      // Disable location tracking
+      await prisma.artisan.update({
+        where: { userId: artisanId },
+        data: { locationTracking: false }
       });
 
       const response = await request(app)
         .put('/api/artisan/location')
         .set(getAuthHeader(artisanToken))
-        .send(testLocation);
+        .send({
+          latitude: 40.7128,
+          longitude: -74.0060
+        });
 
       expect(response.status).toBe(403);
-      expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('message', 'Location tracking is not enabled for this artisan');
-      
-      // Verify no update was attempted
-      expect(prismaMock.artisan.update).not.toHaveBeenCalled();
+      expect(response.body).toHaveProperty('message', 'Location tracking is disabled');
     });
-    
+
     it('should validate location data', async () => {
+      // Enable location tracking first
+      await prisma.artisan.update({
+        where: { userId: artisanId },
+        data: { locationTracking: true }
+      });
+
       const response = await request(app)
         .put('/api/artisan/location')
         .set(getAuthHeader(artisanToken))
         .send({
           latitude: 'invalid',
-          longitude: 200 // Invalid longitude
+          longitude: 'invalid'
         });
-        
+
       expect(response.status).toBe(400);
       expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('message', 'Validation failed');
-      
-      // Verify no database operations were performed
-      expect(prismaMock.artisan.findUnique).not.toHaveBeenCalled();
-      expect(prismaMock.artisan.update).not.toHaveBeenCalled();
+      expect(response.body.errors[0]).toHaveProperty('message', 'latitude must be a number');
     });
   });
 });

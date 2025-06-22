@@ -15,73 +15,134 @@ datasource db {
 }
 
 enum UserRole {
-  USER
+  CUSTOMER
   ARTISAN
   ADMIN
 }
 
-model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  phone         String    @unique
-  password      String
-  name          String
-  role          UserRole  @default(USER)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  profile       Profile?
+enum AuthProvider {
+  EMAIL
+  PHONE
+  OAUTH_GOOGLE
 }
 
-model Artisan {
-  id                String    @id @default(uuid())
-  email             String    @unique
-  phone             String    @unique
-  password          String
+enum OTPType {
+  SIGNUP
+  LOGIN
+  VERIFICATION
+}
+
+// Unified User table
+model User {
+  id                String       @id @default(uuid())
+  email             String?      @unique
+  phone             String?      @unique
   name              String
-  experience        Int       // Years of experience
+  dateOfBirth       DateTime?
+  role              UserRole     @default(CUSTOMER)
+  authProvider      AuthProvider @default(EMAIL)
+  isEmailVerified   Boolean      @default(false)
+  isPhoneVerified   Boolean      @default(false)
+  profileComplete   Boolean      @default(false)
+  
+  // OAuth fields
+  googleId          String?      @unique
+  avatar            String?
+  
+  // Admin fields (only for admin users)
+  password          String?      // Only for admin users
+  
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  
+  // Relations
+  customer          Customer?
+  artisan           Artisan?
+  otpVerifications  OTPVerification[]
+  
+  @@map("users")
+}
+
+// Customer-specific data
+model Customer {
+  id                String       @id @default(uuid())
+  userId            String       @unique
+  preferences       Json?        // Store customer preferences as JSON
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  
+  // Relations
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("customers")
+}
+
+// Artisan-specific data
+model Artisan {
+  id                String       @id @default(uuid())
+  userId            String       @unique
+  skills            String[]     // Array of skill strings
+  experience        Int          // Years of experience
+  portfolio         String[]     // Array of portfolio URLs
+  isProfileComplete Boolean      @default(false)
   bio               String?
   photoUrl          String?
-  idDocumentUrl     String?   // URL to uploaded ID document
-  isOnline          Boolean   @default(false)
-  locationTracking  Boolean   @default(false)
+  idDocumentUrl     String?
+  isOnline          Boolean      @default(false)
+  locationTracking  Boolean      @default(false)
   latitude          Float?
   longitude         Float?
   lastSeen          DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  profile           Profile?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  
+  // Relations
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   categories        ArtisanServiceCategory[]
+  
+  @@map("artisans")
 }
 
-model Profile {
-  id            String    @id @default(uuid())
-  userId        String?   @unique
-  artisanId     String?   @unique
-  user          User?     @relation(fields: [userId], references: [id])
-  artisan       Artisan?  @relation(fields: [artisanId], references: [id])
-  address       String?
-  city          String?
-  state         String?
-  country       String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+// OTP Management
+model OTPVerification {
+  id                String       @id @default(uuid())
+  identifier        String       // email or phone
+  otp               String       // 6-digit OTP
+  type              OTPType
+  expiresAt         DateTime
+  attempts          Int          @default(0)
+  isUsed            Boolean      @default(false)
+  createdAt         DateTime     @default(now())
+  
+  // Relations
+  userId            String?
+  user              User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("otp_verifications")
 }
 
+// Service Categories (unchanged)
 model ServiceCategory {
-  id            String    @id @default(uuid())
-  name          String    @unique
-  description   String?
-  artisans      ArtisanServiceCategory[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                String       @id @default(uuid())
+  name              String       @unique
+  description       String?
+  artisans          ArtisanServiceCategory[]
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  
+  @@map("service_categories")
 }
 
+// Many-to-many relationship between Artisans and Service Categories
 model ArtisanServiceCategory {
-  artisanId     String
-  categoryId    String
-  artisan       Artisan   @relation(fields: [artisanId], references: [id])
-  category      ServiceCategory @relation(fields: [categoryId], references: [id])
-  createdAt     DateTime  @default(now())
-
+  artisanId         String
+  categoryId        String
+  createdAt         DateTime     @default(now())
+  
+  // Relations
+  artisan           Artisan      @relation(fields: [artisanId], references: [id], onDelete: Cascade)
+  category          ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
   @@id([artisanId, categoryId])
+  @@map("artisan_service_categories")
 }

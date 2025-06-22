@@ -1,264 +1,265 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
-import { prisma } from '../index';
-import { hashPassword, comparePassword, generateToken } from '../utils/auth.utils';
+import { UserRole, AuthProvider, OTPType } from '../generated/prisma';
+import authService from '../services/auth.service';
+import { 
+  SignupRequest, 
+  LoginRequest, 
+  OTPVerificationRequest, 
+  OAuthGoogleRequest, 
+  AdminLoginRequest
+} from '../types/auth.types';
 
 const router = Router();
 
 // Validation middleware
 const validateSignup = [
-  body('email').isEmail().withMessage('Please enter a valid email'),
-  body('phone').isMobilePhone('any').withMessage('Please enter a valid phone number'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
-  body('name').notEmpty().withMessage('Name is required'),
+  body('identifier')
+    .notEmpty()
+    .withMessage('Email or phone number is required')
+    .custom((value) => {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
+      if (!emailRegex.test(value) && !phoneRegex.test(value)) {
+        throw new Error('Please provide a valid email or phone number');
+      }
+      return true;
+    }),
+  body('name')
+    .notEmpty()
+    .withMessage('Name is required')
+    .isLength({ min: 2 })
+    .withMessage('Name must be at least 2 characters long'),
+  body('dateOfBirth')
+    .optional()
+    .isISO8601()
+    .withMessage('Date of birth must be a valid date'),
+  body('role')
+    .optional()
+    .isIn([UserRole.CUSTOMER, UserRole.ARTISAN])
+    .withMessage('Role must be either CUSTOMER or ARTISAN'),
+  body('authProvider')
+    .optional()
+    .isIn([AuthProvider.EMAIL, AuthProvider.PHONE])
+    .withMessage('Auth provider must be either EMAIL or PHONE')
 ];
 
 const validateLogin = [
-  body('email').isEmail().withMessage('Please enter a valid email'),
-  body('password').notEmpty().withMessage('Password is required'),
+  body('identifier')
+    .notEmpty()
+    .withMessage('Email or phone number is required')
+];
+
+const validateOTPVerification = [
+  body('identifier')
+    .notEmpty()
+    .withMessage('Email or phone number is required'),
+  body('otp')
+    .notEmpty()
+    .withMessage('OTP is required')
+    .isLength({ min: 6, max: 6 })
+    .withMessage('OTP must be 6 digits'),
+  body('type')
+    .notEmpty()
+    .withMessage('OTP type is required')
+    .isIn([OTPType.SIGNUP, OTPType.LOGIN, OTPType.VERIFICATION])
+    .withMessage('Invalid OTP type')
+];
+
+const validateOAuthGoogle = [
+  body('googleToken')
+    .notEmpty()
+    .withMessage('Google token is required'),
+  body('name')
+    .optional()
+    .notEmpty()
+    .withMessage('Name cannot be empty'),
+  body('dateOfBirth')
+    .optional()
+    .isISO8601()
+    .withMessage('Date of birth must be a valid date'),
+  body('role')
+    .optional()
+    .isIn([UserRole.CUSTOMER, UserRole.ARTISAN])
+    .withMessage('Role must be either CUSTOMER or ARTISAN')
+];
+
+const validateAdminLogin = [
+  body('email')
+    .isEmail()
+    .withMessage('Please enter a valid email'),
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long')
 ];
 
 // Validation error handler
 const handleValidationErrors = (req: Request, res: Response, next: NextFunction) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(400).json({ errors: errors.array() });
+    res.status(400).json({ 
+      error: {
+        message: 'Validation failed',
+        status: 400,
+        details: errors.array()
+      }
+    });
     return;
   }
   next();
 };
 
 // User signup
-router.post('/user/signup', [...validateSignup, handleValidationErrors], async (req: Request, res: Response, next: NextFunction) => {
+router.post('/signup', [...validateSignup, handleValidationErrors], async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { email, phone, password, name } = req.body;
-
-    // Check if user already exists
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email },
-          { phone }
-        ]
+    const signupData: SignupRequest = req.body;
+    const result = await authService.signup(signupData);
+    res.status(200).json(result);
+  } catch (error: any) {
+    res.status(400).json({ 
+      error: {
+        message: error.message,
+        status: 400
       }
     });
-
-    if (existingUser) {
-      res.status(400).json({ message: 'User already exists with this email or phone' });
-      return;
-    }
-
-    // Hash password
-    const hashedPassword = await hashPassword(password);
-
-    // Create user
-    const user = await prisma.user.create({
-      data: {
-        email,
-        phone,
-        password: hashedPassword,
-        name,
-        profile: {
-          create: {}
-        }
-      }
-    });
-
-    // Generate token
-    const token = generateToken(user.id, 'user');
-
-    res.status(201).json({
-      message: 'User created successfully',
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        phone: user.phone,
-        name: user.name
-      }
-    });
-  } catch (error) {
-    next(error);
   }
 });
 
-// Artisan signup
-router.post('/artisan/signup', [...validateSignup, body('experience').isInt({ min: 0 }), handleValidationErrors], async (req: Request, res: Response, next: NextFunction) => {
+// Verify OTP (for signup)
+router.post('/verify-signup', [...validateOTPVerification, handleValidationErrors], async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { email, phone, password, name, experience, bio } = req.body;
-
-    // Check if artisan already exists
-    const existingArtisan = await prisma.artisan.findFirst({
-      where: {
-        OR: [
-          { email },
-          { phone }
-        ]
+    const otpData: OTPVerificationRequest = {
+      ...req.body,
+      type: OTPType.SIGNUP
+    };
+    const result = await authService.verifyOTP(otpData);
+    res.status(200).json(result);
+  } catch (error: any) {
+    res.status(400).json({ 
+      error: {
+        message: error.message,
+        status: 400
       }
     });
-
-    if (existingArtisan) {
-      res.status(400).json({ message: 'Artisan already exists with this email or phone' });
-      return;
-    }
-
-    // Hash password
-    const hashedPassword = await hashPassword(password);
-
-    // Create artisan
-    const artisan = await prisma.artisan.create({
-      data: {
-        email,
-        phone,
-        password: hashedPassword,
-        name,
-        experience,
-        bio,
-        profile: {
-          create: {}
-        }
-      }
-    });
-
-    // Generate token
-    const token = generateToken(artisan.id, 'artisan');
-
-    res.status(201).json({
-      message: 'Artisan created successfully',
-      token,
-      artisan: {
-        id: artisan.id,
-        email: artisan.email,
-        phone: artisan.phone,
-        name: artisan.name,
-        experience: artisan.experience,
-        bio: artisan.bio
-      }
-    });
-  } catch (error) {
-    next(error);
   }
 });
 
 // User login
-router.post('/user/login', [...validateLogin, handleValidationErrors], async (req: Request, res: Response, next: NextFunction) => {
+router.post('/login', [...validateLogin, handleValidationErrors], async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { email, password } = req.body;
-
-    // Find user
-    const user = await prisma.user.findUnique({
-      where: { email }
-    });
-
-    if (!user) {
-      res.status(401).json({ message: 'Invalid credentials' });
-      return;
-    }
-
-    // Check password
-    const isValidPassword = await comparePassword(password, user.password);
-    if (!isValidPassword) {
-      res.status(401).json({ message: 'Invalid credentials' });
-      return;
-    }
-
-    // Generate token
-    const token = generateToken(user.id, 'user');
-
-    res.json({
-      message: 'Login successful',
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        phone: user.phone,
-        name: user.name
+    const loginData: LoginRequest = req.body;
+    const result = await authService.login(loginData);
+    res.status(200).json(result);
+  } catch (error: any) {
+    res.status(400).json({ 
+      error: {
+        message: error.message,
+        status: 400
       }
     });
-  } catch (error) {
-    next(error);
   }
 });
 
-// Artisan login
-router.post('/artisan/login', [...validateLogin, handleValidationErrors], async (req: Request, res: Response, next: NextFunction) => {
+// Verify OTP (for login)
+router.post('/verify-login', [...validateOTPVerification, handleValidationErrors], async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { email, password } = req.body;
-
-    // Find artisan
-    const artisan = await prisma.artisan.findUnique({
-      where: { email }
-    });
-
-    if (!artisan) {
-      res.status(401).json({ message: 'Invalid credentials' });
-      return;
-    }
-
-    // Check password
-    const isValidPassword = await comparePassword(password, artisan.password);
-    if (!isValidPassword) {
-      res.status(401).json({ message: 'Invalid credentials' });
-      return;
-    }
-
-    // Generate token
-    const token = generateToken(artisan.id, 'artisan');
-
-    res.json({
-      message: 'Login successful',
-      token,
-      artisan: {
-        id: artisan.id,
-        email: artisan.email,
-        phone: artisan.phone,
-        name: artisan.name,
-        experience: artisan.experience,
-        bio: artisan.bio
+    const otpData: OTPVerificationRequest = {
+      ...req.body,
+      type: OTPType.LOGIN
+    };
+    const result = await authService.verifyLoginOTP(otpData);
+    res.status(200).json(result);
+  } catch (error: any) {
+    res.status(400).json({ 
+      error: {
+        message: error.message,
+        status: 400
       }
     });
-  } catch (error) {
-    next(error);
   }
 });
 
-// Admin login (for development only, should be protected in production)
-router.post('/admin/login', [...validateLogin, handleValidationErrors], async (req: Request, res: Response, next: NextFunction) => {
+// Google OAuth
+router.post('/google', [...validateOAuthGoogle, handleValidationErrors], async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { email, password } = req.body;
-
-    // Find admin user
-    const admin = await prisma.user.findUnique({
-      where: { email, role: 'ADMIN' }
-    });
-
-    if (!admin) {
-      res.status(401).json({ message: 'Invalid credentials' });
-      return;
-    }
-
-    // Check password
-    const isMatch = await comparePassword(password, admin.password);
-    if (!isMatch) {
-      res.status(401).json({ message: 'Invalid credentials' });
-      return;
-    }
-
-    // Generate token with admin role
-    const token = generateToken(admin.id, 'admin', 'ADMIN');
-
-    res.json({
-      message: 'Admin login successful',
-      token,
-      user: {
-        id: admin.id,
-        email: admin.email,
-        name: admin.name,
-        role: 'ADMIN'
+    const oauthData: OAuthGoogleRequest = req.body;
+    const result = await authService.oauthGoogle(oauthData);
+    res.status(200).json(result);
+  } catch (error: any) {
+    res.status(400).json({ 
+      error: {
+        message: error.message,
+        status: 400
       }
     });
-  } catch (error) {
-    next(error);
+  }
+});
+
+// Admin login (email/password only)
+router.post('/admin/login', [...validateAdminLogin, handleValidationErrors], async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const adminData: AdminLoginRequest = req.body;
+    const result = await authService.adminLogin(adminData);
+    res.status(200).json(result);
+  } catch (error: any) {
+    res.status(400).json({ 
+      error: {
+        message: error.message,
+        status: 400
+      }
+    });
+  }
+});
+
+// Refresh token
+router.post('/refresh', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      res.status(400).json({ 
+        error: {
+          message: 'Token is required',
+          status: 400
+        }
+      });
+      return;
+    }
+    const result = await authService.refreshToken(token);
+    res.status(200).json(result);
+  } catch (error: any) {
+    res.status(400).json({ 
+      error: {
+        message: error.message,
+        status: 400
+      }
+    });
+  }
+});
+
+// Logout
+router.post('/logout', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      res.status(400).json({ 
+        error: {
+          message: 'Token is required',
+          status: 400
+        }
+      });
+      return;
+    }
+    await authService.logout(token);
+    res.status(200).json({ message: 'Logged out successfully' });
+  } catch (error: any) {
+    res.status(400).json({ 
+      error: {
+        message: error.message,
+        status: 400
+      }
+    });
   }
 });
 

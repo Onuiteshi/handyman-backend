@@ -1,96 +1,78 @@
-import { Router } from 'express';
-import { body, param } from 'express-validator';
-import { authMiddleware, isArtisan, isAdmin } from '../middleware/auth.middleware';
+import { Router, Response, NextFunction } from 'express';
+import { body, validationResult } from 'express-validator';
+import { prisma } from '../index';
+import { authMiddleware, isAdmin } from '../middleware/auth.middleware';
+import { AuthRequest } from '../middleware/auth.middleware';
 import {
-  createCategory,
   getAllCategories,
+  createCategory,
   getCategoryById,
   updateCategory,
   deleteCategory,
   addCategoryToArtisan,
   removeCategoryFromArtisan,
+  getArtisansByCategory
 } from '../controllers/serviceCategory.controller';
-import { validate } from '../middleware/validation.middleware';
 
 const router = Router();
 
 // Validation middleware
-// Validation rules
 const validateCategory = [
-  body('name')
-    .trim()
-    .notEmpty()
-    .withMessage('Name is required')
-    .isLength({ min: 2, max: 100 })
-    .withMessage('Name must be between 2 and 100 characters'),
-  body('description')
-    .optional()
-    .trim()
-    .isLength({ max: 500 })
-    .withMessage('Description cannot exceed 500 characters')
+  body('name').notEmpty().withMessage('Name is required'),
+  body('description').optional().isString().withMessage('Description must be a string'),
 ];
 
-const validateCategoryId = [
-  param('id')
-    .isUUID()
-    .withMessage('Invalid category ID')
+const validateArtisanCategory = [
+  body('artisanId').isUUID().withMessage('Invalid artisan ID'),
+  body('categoryId').isUUID().withMessage('Invalid category ID'),
 ];
 
-const validateCategoryIdParam = [
-  param('categoryId')
-    .isUUID()
-    .withMessage('Invalid category ID')
-];
+// Validation error handler
+const handleValidationErrors = (req: AuthRequest, res: Response, next: NextFunction) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    res.status(400).json({ errors: errors.array() });
+    return;
+  }
+  next();
+};
 
 // Public routes
 router.get('/', getAllCategories);
+router.get('/:id', getCategoryById);
+router.get('/:categoryId/artisans', getArtisansByCategory);
 
-router.get(
-  '/:id',
-  validate(validateCategoryId),
-  getCategoryById
-);
-
-// Admin protected routes
-router.post(
-  '/',
+// Protected routes (Admin only)
+router.post('/', [
   authMiddleware,
   isAdmin,
-  ...validate(validateCategory),
-  createCategory
-);
+  ...validateCategory,
+  handleValidationErrors
+], createCategory);
 
-router.put(
-  '/:id',
+router.put('/:id', [
   authMiddleware,
   isAdmin,
-  ...validate([...validateCategoryId, ...validateCategory]),
-  updateCategory
-);
+  ...validateCategory,
+  handleValidationErrors
+], updateCategory);
 
-router.delete(
-  '/:id',
+router.delete('/:id', [
   authMiddleware,
-  isAdmin,
-  ...validate(validateCategoryId),
-  deleteCategory
-);
+  isAdmin
+], deleteCategory);
 
 // Artisan category management
-router.post(
-  '/:categoryId/artisan',
+router.post('/artisan/add', [
   authMiddleware,
-  isArtisan,
-  ...validate(validateCategoryIdParam),
-  addCategoryToArtisan
-);
+  ...validateArtisanCategory,
+  handleValidationErrors
+], addCategoryToArtisan);
 
-router.delete(
-  '/:categoryId/artisan',
+router.delete('/artisan/remove', [
   authMiddleware,
-  isArtisan,
-  ...validate(validateCategoryIdParam),
-  removeCategoryFromArtisan
-);
+  ...validateArtisanCategory,
+  handleValidationErrors
+], removeCategoryFromArtisan);
 
 export default router;
