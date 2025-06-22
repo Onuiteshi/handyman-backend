@@ -55,7 +55,7 @@ A comprehensive backend service for a handyman platform that connects customers 
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/Onuiteshi/handyman-backend.git
 cd handyman-backend
 ```
 
