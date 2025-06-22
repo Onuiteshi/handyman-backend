@@ -1,5 +1,5 @@
 import { Response, NextFunction } from 'express';
-import { prisma } from '..';
+import { prisma } from '../index';
 import { AuthRequest } from '../middleware/auth.middleware';
 
 // Type for category data
@@ -21,66 +21,97 @@ interface TypedResponse<T = any> extends Response {
   json: (body: ApiResponse<T>) => this;
 }
 
-// Create a new service category (Admin only)
-export const createCategory = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+// Create a new service category
+export const createCategory = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { name, description } = req.body as CategoryData;
+    const { name, description } = req.body;
 
     const category = await prisma.serviceCategory.create({
       data: {
         name,
-        description,
-      },
+        description
+      }
     });
 
-    const response: ApiResponse<typeof category> = {
-      success: true,
-      data: category,
-    };
-
-    res.status(201).json(response);
+    res.status(201).json({
+      message: 'Service category created successfully',
+      category
+    });
   } catch (error) {
-    console.error('Error creating category:', error);
     next(error);
   }
 };
 
 // Get all service categories
-export const getAllCategories = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const getAllCategories = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const categories = await prisma.serviceCategory.findMany({
-      orderBy: { name: 'asc' },
+      orderBy: { name: 'asc' }
     });
 
-    const response: ApiResponse<{ count: number; data: typeof categories }> = {
-      success: true,
-      data: {
-        count: categories.length,
-        data: categories,
-      },
-    };
-
-    res.json(response);
+    res.json({
+      message: 'Service categories retrieved successfully',
+      categories
+    });
   } catch (error) {
-    console.error('Error fetching categories:', error);
     next(error);
   }
 };
 
-// Get a single category by ID
-export const getCategoryById = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+// Get artisans by category
+export const getArtisansByCategory = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { categoryId } = req.params;
+
+    const artisans = await prisma.artisanServiceCategory.findMany({
+      where: {
+        categoryId
+      },
+      include: {
+        artisan: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+                avatar: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const formattedArtisans = artisans.map(ac => ({
+      id: ac.artisan.id,
+      userId: ac.artisan.userId,
+      skills: ac.artisan.skills,
+      experience: ac.artisan.experience,
+      portfolio: ac.artisan.portfolio,
+      isProfileComplete: ac.artisan.isProfileComplete,
+      bio: ac.artisan.bio,
+      photoUrl: ac.artisan.photoUrl,
+      isOnline: ac.artisan.isOnline,
+      locationTracking: ac.artisan.locationTracking,
+      latitude: ac.artisan.latitude,
+      longitude: ac.artisan.longitude,
+      lastSeen: ac.artisan.lastSeen,
+      user: ac.artisan.user
+    }));
+
+    res.json({
+      message: 'Artisans retrieved successfully',
+      artisans: formattedArtisans
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get category by ID
+export const getCategoryById = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params;
 
@@ -90,275 +121,140 @@ export const getCategoryById = async (
         artisans: {
           include: {
             artisan: {
-              select: {
-                id: true,
-                name: true,
-                photoUrl: true,
-                experience: true,
-              },
-            },
-          },
-        },
-      },
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    phone: true,
+                    avatar: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     });
 
     if (!category) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Category not found',
-      };
-      return res.status(404).json(response);
+      res.status(404).json({ message: 'Service category not found' });
+      return;
     }
 
-    const response: ApiResponse<typeof category> = {
-      success: true,
-      data: category,
-    };
+    const formattedArtisans = category.artisans.map(ac => ({
+      id: ac.artisan.id,
+      userId: ac.artisan.userId,
+      skills: ac.artisan.skills,
+      experience: ac.artisan.experience,
+      portfolio: ac.artisan.portfolio,
+      isProfileComplete: ac.artisan.isProfileComplete,
+      bio: ac.artisan.bio,
+      photoUrl: ac.artisan.photoUrl,
+      isOnline: ac.artisan.isOnline,
+      locationTracking: ac.artisan.locationTracking,
+      latitude: ac.artisan.latitude,
+      longitude: ac.artisan.longitude,
+      lastSeen: ac.artisan.lastSeen,
+      user: ac.artisan.user
+    }));
 
-    res.json(response);
+    res.json({
+      message: 'Service category retrieved successfully',
+      category: {
+        ...category,
+        artisans: formattedArtisans
+      }
+    });
   } catch (error) {
-    console.error('Error fetching category by ID:', error);
     next(error);
   }
 };
 
-// Update a category (Admin only)
-export const updateCategory = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+// Update category
+export const updateCategory = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params;
-    const updateData = req.body as Partial<CategoryData>;
+    const { name, description } = req.body;
 
     const category = await prisma.serviceCategory.update({
       where: { id },
-      data: updateData,
+      data: {
+        name,
+        description
+      }
     });
 
-    const response: ApiResponse<typeof category> = {
-      success: true,
-      data: category,
-    };
-
-    res.json(response);
-  } catch (error:any) {
-    console.error('Error updating category:', error);
-    if (error.code === 'P2025') {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Category not found',
-      };
-      return res.status(404).json(response);
-    }
+    res.json({
+      message: 'Service category updated successfully',
+      category
+    });
+  } catch (error) {
     next(error);
   }
 };
 
-// Delete a category (Admin only)
-export const deleteCategory = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+// Delete category
+export const deleteCategory = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params;
 
-    // First, delete all relations in ArtisanServiceCategory
-    await prisma.artisanServiceCategory.deleteMany({
-      where: { categoryId: id },
-    });
-
     await prisma.serviceCategory.delete({
-      where: { id },
+      where: { id }
     });
 
-    const response: ApiResponse = {
-      success: true,
-      message: 'Category deleted successfully',
-    };
-
-    res.json(response);
-  } catch (error:any) {
-    console.error('Error deleting category:', error);
-    if (error.code === 'P2025') {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Category not found',
-      };
-      return res.status(404).json(response);
-    }
+    res.json({
+      message: 'Service category deleted successfully'
+    });
+  } catch (error) {
     next(error);
   }
 };
 
-// Add category to artisan's services
-export const addCategoryToArtisan = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+// Add category to artisan
+export const addCategoryToArtisan = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { categoryId } = req.params;
-    const artisanId = req.user?.id;
+    const { artisanId, categoryId } = req.body;
 
-    if (!artisanId) {
-      return res.status(401).json({
-        success: false,
-        error: 'Authentication required',
-      });
-    }
-
-    // Check if the artisan exists
-    const artisan = await prisma.artisan.findUnique({
-      where: { id: artisanId },
-    });
-
-    if (!artisan) {
-      return res.status(404).json({
-        success: false,
-        error: 'Artisan not found',
-      });
-    }
-
-    // Check if the category exists
-    const category = await prisma.serviceCategory.findUnique({
-      where: { id: categoryId },
-    });
-
-    if (!category) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Category not found',
-      };
-      return res.status(404).json(response);
-    }
-
-    // Check if the relation already exists
-    const existingRelation = await prisma.artisanServiceCategory.findUnique({
-      where: {
-        artisanId_categoryId: {
-          artisanId,
-          categoryId,
-        },
-      },
-    });
-
-    if (existingRelation) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Category already added to artisan',
-      };
-      return res.status(400).json(response);
-    }
-
-    // Create the relation
     const artisanCategory = await prisma.artisanServiceCategory.create({
       data: {
         artisanId,
-        categoryId,
+        categoryId
       },
       include: {
-        category: true,
-      },
+        artisan: true,
+        category: true
+      }
     });
 
-    const response: ApiResponse<{ category: typeof artisanCategory.category }> = {
-      success: true,
+    res.status(201).json({
       message: 'Category added to artisan successfully',
-      data: {
-        category: artisanCategory.category,
-      },
-    };
-
-    res.status(201).json(response);
-  } catch (error:any) {
-    console.error('Error adding category to artisan:', error);
-    
-    if (error.code === 'P2002') {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Category already exists for this artisan',
-      };
-      return res.status(400).json(response);
-    }
-    
-    if (error.code === 'P2003') {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Invalid category or artisan ID',
-      };
-      return res.status(400).json(response);
-    }
-    
+      artisanCategory
+    });
+  } catch (error) {
     next(error);
   }
 };
 
-// Remove category from artisan's services
-export const removeCategoryFromArtisan = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+// Remove category from artisan
+export const removeCategoryFromArtisan = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { categoryId } = req.params;
-    const artisanId = req.user?.id;
+    const { artisanId, categoryId } = req.body;
 
-    if (!artisanId) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Authentication required',
-      };
-      return res.status(401).json(response);
-    }
-
-    // Check if the relation exists
-    const relation = await prisma.artisanServiceCategory.findUnique({
-      where: {
-        artisanId_categoryId: {
-          artisanId,
-          categoryId,
-        },
-      },
-    });
-
-    if (!relation) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Category not found in artisan services',
-      };
-      return res.status(404).json(response);
-    }
-
-    // Delete the relation
     await prisma.artisanServiceCategory.delete({
       where: {
         artisanId_categoryId: {
           artisanId,
-          categoryId,
-        },
-      },
+          categoryId
+        }
+      }
     });
 
-    const response: ApiResponse = {
-      success: true,
-      message: 'Category removed from artisan successfully',
-    };
-
-    res.json(response);
-  } catch (error:any) {
-    console.error('Error removing category from artisan:', error);
-    
-    if (error.code === 'P2025') {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Category not found in artisan services',
-      };
-      return res.status(404).json(response);
-    }
-    
+    res.json({
+      message: 'Category removed from artisan successfully'
+    });
+  } catch (error) {
     next(error);
   }
 };

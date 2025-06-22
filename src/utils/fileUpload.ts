@@ -1,52 +1,48 @@
-import { Request } from 'express';
-import multer, { FileFilterCallback, diskStorage, Options as MulterOptions } from 'multer';
-import { v4 as uuidv4 } from 'uuid';
+import multer from 'multer';
 import path from 'path';
+import { Request } from 'express';
+import { TokenPayload } from '../types/auth.types';
 
 export interface MulterRequest extends Request {
-  file?: Express.Multer.File;
-  user?: {
-    id: string;
-    type: 'user' | 'artisan' | 'admin';
-    role?: 'USER' | 'ARTISAN' | 'ADMIN';
-  };
+  user?: TokenPayload;
 }
 
-// Configure storage
-const storage = diskStorage({
-  destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
     cb(null, 'uploads/');
   },
-  filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
-    const uniqueSuffix = `${Date.now()}-${uuidv4()}`;
-    const ext = path.extname(file.originalname);
-    cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
-  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
 });
 
-// File filter for validation
-const fileFilter = (
-  req: Request,
-  file: Express.Multer.File,
-  cb: FileFilterCallback
-) => {
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
-  if (allowedTypes.includes(file.mimetype)) {
+// File filter to only allow images and documents
+const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const allowedMimes = [
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/gif',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ];
+
+  if (allowedMimes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    const error = new Error('Invalid file type. Only JPEG, PNG, and PDF are allowed.') as any;
-    error.status = 400;
-    cb(error);
+    cb(new Error('Invalid file type. Only images and documents are allowed.'));
   }
 };
 
-// Configure multer
 const upload = multer({
-  storage,
-  fileFilter,
+  storage: storage,
+  fileFilter: fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-  },
-} as MulterOptions);
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  }
+});
 
 export default upload;

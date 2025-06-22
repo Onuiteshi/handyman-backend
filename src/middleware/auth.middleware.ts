@@ -1,23 +1,17 @@
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
+import { UserRole } from '../generated/prisma';
+import { TokenPayload } from '../types/auth.types';
 
 export interface AuthRequest extends Request {
-  user?: {
-    id: string;
-    type: 'user' | 'artisan' | 'admin';
-    role?: 'USER' | 'ARTISAN' | 'ADMIN';
-  };
+  user?: TokenPayload;
 }
 
 // Extend the Request type to include our custom properties
 declare global {
   namespace Express {
     interface Request {
-      user?: {
-        id: string;
-        type: 'user' | 'artisan' | 'admin';
-        role?: 'USER' | 'ARTISAN' | 'ADMIN';
-      };
+      user?: TokenPayload;
     }
   }
 }
@@ -31,10 +25,7 @@ export const authMiddleware: RequestHandler = (req: Request, res: Response, next
       return;
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as {
-      id: string;
-      type: 'user' | 'artisan' | 'admin';
-    };
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as TokenPayload;
 
     req.user = decoded;
     next();
@@ -44,24 +35,48 @@ export const authMiddleware: RequestHandler = (req: Request, res: Response, next
 };
 
 export const isArtisan: RequestHandler = (req: AuthRequest, res: Response, next: NextFunction) => {
-  if (req.user?.type !== 'artisan') {
+  if (req.user?.role !== UserRole.ARTISAN) {
     res.status(403).json({ message: 'Access denied. Artisan only.' });
     return;
   }
   next();
 };
 
-export const isUser: RequestHandler = (req: AuthRequest, res: Response, next: NextFunction) => {
-  if (req.user?.type !== 'user') {
-    res.status(403).json({ message: 'Access denied. User only.' });
+export const isCustomer: RequestHandler = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (req.user?.role !== UserRole.CUSTOMER) {
+    res.status(403).json({ message: 'Access denied. Customer only.' });
     return;
   }
   next();
 };
 
 export const isAdmin: RequestHandler = (req: AuthRequest, res: Response, next: NextFunction) => {
-  if (req.user?.type !== 'admin' && req.user?.role !== 'ADMIN') {
+  if (req.user?.role !== UserRole.ADMIN) {
     res.status(403).json({ message: 'Access denied. Admin only.' });
+    return;
+  }
+  next();
+};
+
+export const requireVerifiedEmail: RequestHandler = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (!req.user?.isEmailVerified) {
+    res.status(403).json({ message: 'Email verification required.' });
+    return;
+  }
+  next();
+};
+
+export const requireVerifiedPhone: RequestHandler = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (!req.user?.isPhoneVerified) {
+    res.status(403).json({ message: 'Phone verification required.' });
+    return;
+  }
+  next();
+};
+
+export const requireProfileComplete: RequestHandler = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (!req.user?.profileComplete) {
+    res.status(403).json({ message: 'Profile completion required.' });
     return;
   }
   next();

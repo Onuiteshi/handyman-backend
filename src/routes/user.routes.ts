@@ -1,7 +1,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
 import { prisma } from '../index';
-import { authMiddleware, isUser } from '../middleware/auth.middleware';
+import { authMiddleware, isCustomer } from '../middleware/auth.middleware';
 import { AuthRequest } from '../middleware/auth.middleware';
 
 const router = Router();
@@ -10,10 +10,7 @@ const router = Router();
 const validateProfileUpdate = [
   body('name').optional().notEmpty().withMessage('Name cannot be empty'),
   body('phone').optional().isMobilePhone('any').withMessage('Please enter a valid phone number'),
-  body('address').optional().notEmpty().withMessage('Address cannot be empty'),
-  body('city').optional().notEmpty().withMessage('City cannot be empty'),
-  body('state').optional().notEmpty().withMessage('State cannot be empty'),
-  body('country').optional().notEmpty().withMessage('Country cannot be empty'),
+  body('dateOfBirth').optional().isISO8601().withMessage('Date of birth must be a valid date'),
 ];
 
 // Validation error handler
@@ -27,14 +24,18 @@ const handleValidationErrors = (req: AuthRequest, res: Response, next: NextFunct
 };
 
 // Get user profile
-router.get('/profile', authMiddleware, isUser, async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+router.get('/profile', authMiddleware, isCustomer, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ message: 'User not authenticated' });
+      return;
+    }
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
-        profile: true
+        customer: true
       }
     });
 
@@ -44,12 +45,18 @@ router.get('/profile', authMiddleware, isUser, async (req: AuthRequest, res: Res
     }
 
     res.json({
+      message: 'Profile retrieved successfully',
       user: {
         id: user.id,
         email: user.email,
         phone: user.phone,
         name: user.name,
-        profile: user.profile
+        dateOfBirth: user.dateOfBirth,
+        role: user.role,
+        isEmailVerified: user.isEmailVerified,
+        isPhoneVerified: user.isPhoneVerified,
+        profileComplete: user.profileComplete,
+        customer: user.customer
       }
     });
   } catch (error) {
@@ -58,45 +65,26 @@ router.get('/profile', authMiddleware, isUser, async (req: AuthRequest, res: Res
 });
 
 // Update user profile
-router.put('/profile', [authMiddleware, isUser, ...validateProfileUpdate, handleValidationErrors], async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+router.put('/profile', [authMiddleware, isCustomer, ...validateProfileUpdate, handleValidationErrors], async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.id;
-    const { name, phone, address, city, state, country } = req.body;
-
-    // Check if phone is being updated and if it's already taken
-    if (phone) {
-      const existingUser = await prisma.user.findFirst({
-        where: {
-          phone,
-          NOT: {
-            id: userId
-          }
-        }
-      });
-
-      if (existingUser) {
-        res.status(400).json({ message: 'Phone number is already in use' });
-        return;
-      }
+    if (!userId) {
+      res.status(401).json({ message: 'User not authenticated' });
+      return;
     }
 
-    // Update user and profile
+    const { name, phone, dateOfBirth } = req.body;
+
+    const updateData: any = {};
+    if (name) updateData.name = name;
+    if (phone) updateData.phone = phone;
+    if (dateOfBirth) updateData.dateOfBirth = new Date(dateOfBirth);
+
     const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: {
-        name: name || undefined,
-        phone: phone || undefined,
-        profile: {
-          update: {
-            address: address || undefined,
-            city: city || undefined,
-            state: state || undefined,
-            country: country || undefined
-          }
-        }
-      },
+      data: updateData,
       include: {
-        profile: true
+        customer: true
       }
     });
 
@@ -107,8 +95,41 @@ router.put('/profile', [authMiddleware, isUser, ...validateProfileUpdate, handle
         email: updatedUser.email,
         phone: updatedUser.phone,
         name: updatedUser.name,
-        profile: updatedUser.profile
+        dateOfBirth: updatedUser.dateOfBirth,
+        role: updatedUser.role,
+        isEmailVerified: updatedUser.isEmailVerified,
+        isPhoneVerified: updatedUser.isPhoneVerified,
+        profileComplete: updatedUser.profileComplete,
+        customer: updatedUser.customer
       }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Update customer preferences
+router.put('/preferences', authMiddleware, isCustomer, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ message: 'User not authenticated' });
+      return;
+    }
+
+    const { preferences } = req.body;
+
+    const updatedCustomer = await prisma.customer.update({
+      where: { userId },
+      data: { preferences },
+      include: {
+        user: true
+      }
+    });
+
+    res.json({
+      message: 'Preferences updated successfully',
+      customer: updatedCustomer
     });
   } catch (error) {
     next(error);

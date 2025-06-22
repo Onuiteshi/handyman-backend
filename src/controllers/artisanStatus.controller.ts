@@ -1,238 +1,162 @@
-import { Request, Response } from 'express';
-import prisma from '../lib/prisma';
+import { Response, NextFunction } from 'express';
+import { prisma } from '../index';
+import { AuthRequest } from '../middleware/auth.middleware';
 
-interface AuthenticatedRequest extends Request {
-  user: {
-    id: string;
-    type: 'user' | 'artisan' | 'admin';
-    role?: 'USER' | 'ARTISAN' | 'ADMIN';
-  };
-}
+// Type for our authenticated request
+type AuthenticatedRequest = AuthRequest;
 
 /**
  * Toggle artisan's online status
  */
-export const updateOnlineStatus = async (req: AuthenticatedRequest, res: Response) => {
+export const updateOnlineStatus = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { isOnline } = req.body;
-    
-    if (typeof isOnline !== 'boolean') {
-      return res.status(400).json({
-        success: false,
-        message: 'isOnline must be a boolean value'
-      });
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ message: 'User not authenticated' });
+      return;
     }
-    
-    const artisan = await prisma.artisan.update({
-      where: { id: req.user.id },
+
+    const { isOnline } = req.body;
+
+    // Find the artisan record for this user
+    const artisan = await prisma.artisan.findUnique({
+      where: { userId }
+    });
+
+    if (!artisan) {
+      res.status(404).json({ message: 'Artisan profile not found' });
+      return;
+    }
+
+    const updatedArtisan = await prisma.artisan.update({
+      where: { id: artisan.id },
       data: { 
         isOnline,
-        lastSeen: isOnline ? new Date() : undefined
-      },
-      select: {
-        id: true,
-        isOnline: true,
-        lastSeen: true
+        lastSeen: isOnline ? new Date() : null
       }
     });
 
     res.json({
-      success: true,
-      data: artisan
+      message: 'Online status updated successfully',
+      isOnline: updatedArtisan.isOnline,
+      lastSeen: updatedArtisan.lastSeen
     });
-  } catch (error: any) {
-    console.error('Error updating online status:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update online status',
-      error: error?.message || 'An unknown error occurred'
-    });
+  } catch (error) {
+    next(error);
   }
 };
 
 /**
  * Update location tracking consent and initial location
  */
-export const updateLocationConsent = async (req: AuthenticatedRequest, res: Response) => {
+export const updateLocationConsent = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { locationTracking, latitude, longitude } = req.body;
-    
-    if (typeof locationTracking !== 'boolean') {
-      return res.status(400).json({
-        success: false,
-        message: 'locationTracking must be a boolean value'
-      });
-    }
-    
-    if (locationTracking && (typeof latitude !== 'number' || typeof longitude !== 'number')) {
-      return res.status(400).json({
-        success: false,
-        message: 'Latitude and longitude are required when enabling location tracking'
-      });
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ message: 'User not authenticated' });
+      return;
     }
 
-    const updateData: any = { 
-      locationTracking,
-      // Only update coordinates if tracking is being enabled
-      ...(locationTracking ? { 
-        latitude,
-        longitude,
-        lastSeen: new Date()
-      } : {
-        latitude: null,
-        longitude: null
-      })
-    };
+    const { locationTracking } = req.body;
 
-    const artisan = await prisma.artisan.update({
-      where: { id: req.user.id },
-      data: updateData,
-      select: {
-        id: true,
-        locationTracking: true,
-        latitude: true,
-        longitude: true,
-        lastSeen: true
-      }
+    const artisan = await prisma.artisan.findUnique({
+      where: { userId }
+    });
+
+    if (!artisan) {
+      res.status(404).json({ message: 'Artisan profile not found' });
+      return;
+    }
+
+    const updatedArtisan = await prisma.artisan.update({
+      where: { id: artisan.id },
+      data: { locationTracking }
     });
 
     res.json({
-      success: true,
-      data: {
-        locationTracking: artisan.locationTracking,
-        ...(artisan.latitude && artisan.longitude ? {
-          location: {
-            latitude: artisan.latitude,
-            longitude: artisan.longitude,
-            lastUpdated: artisan.lastSeen
-          }
-        } : {})
-      }
+      message: 'Location tracking preference updated successfully',
+      locationTracking: updatedArtisan.locationTracking
     });
-  } catch (error: any) {
-    console.error('Error updating location consent:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update location settings',
-      error: error?.message || 'An unknown error occurred'
-    });
+  } catch (error) {
+    next(error);
   }
 };
 
 /**
  * Update artisan's current location
  */
-export const updateLocation = async (req: AuthenticatedRequest, res: Response) => {
+export const updateLocation = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ message: 'User not authenticated' });
+      return;
+    }
+
     const { latitude, longitude } = req.body;
-    
-    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
-      return res.status(400).json({
-        success: false,
-        message: 'Latitude and longitude are required and must be numbers'
-      });
-    }
-    
-    // Validate latitude and longitude ranges
-    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid latitude or longitude values'
-      });
-    }
-    
-    const now = new Date();
-    
-    const artisan = await prisma.artisan.update({
-      where: { 
-        id: req.user.id,
-        locationTracking: true // Only update if location tracking is enabled
-      },
-      data: {
-        latitude,
-        longitude,
-        lastSeen: now,
-        isOnline: true // Automatically mark as online when updating location
-      },
-      select: {
-        id: true,
-        latitude: true,
-        longitude: true,
-        lastSeen: true
-      }
+
+    const artisan = await prisma.artisan.findUnique({
+      where: { userId }
     });
 
     if (!artisan) {
-      return res.status(403).json({
-        success: false,
-        message: 'Location tracking is not enabled for this artisan'
-      });
+      res.status(404).json({ message: 'Artisan profile not found' });
+      return;
     }
 
-    res.json({
-      success: true,
-      data: {
-        location: {
-          latitude: artisan.latitude,
-          longitude: artisan.longitude,
-          lastUpdated: artisan.lastSeen
-        }
+    if (!artisan.locationTracking) {
+      res.status(403).json({ message: 'Location tracking is disabled' });
+      return;
+    }
+
+    const updatedArtisan = await prisma.artisan.update({
+      where: { id: artisan.id },
+      data: { 
+        latitude,
+        longitude,
+        lastSeen: new Date()
       }
     });
-  } catch (error: any) {
-    console.error('Error updating location:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update location',
-      error: error?.message || 'An unknown error occurred'
+
+    res.json({
+      message: 'Location updated successfully',
+      latitude: updatedArtisan.latitude,
+      longitude: updatedArtisan.longitude,
+      lastSeen: updatedArtisan.lastSeen
     });
+  } catch (error) {
+    next(error);
   }
 };
 
 /**
  * Get artisan's current status and location
  */
-export const getStatus = async (req: AuthenticatedRequest, res: Response) => {
+export const getStatus = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ message: 'User not authenticated' });
+      return;
+    }
+
     const artisan = await prisma.artisan.findUnique({
-      where: { id: req.user.id },
-      select: {
-        id: true,
-        isOnline: true,
-        locationTracking: true,
-        latitude: true,
-        longitude: true,
-        lastSeen: true
-      }
+      where: { userId }
     });
 
     if (!artisan) {
-      return res.status(404).json({
-        success: false,
-        message: 'Artisan not found'
-      });
+      res.status(404).json({ message: 'Artisan profile not found' });
+      return;
     }
 
     res.json({
-      success: true,
-      data: {
-        isOnline: artisan.isOnline,
-        locationTracking: artisan.locationTracking,
-        ...(artisan.latitude && artisan.longitude ? {
-          location: {
-            latitude: artisan.latitude,
-            longitude: artisan.longitude,
-            lastUpdated: artisan.lastSeen
-          }
-        } : {})
-      }
+      isOnline: artisan.isOnline,
+      locationTracking: artisan.locationTracking,
+      latitude: artisan.latitude,
+      longitude: artisan.longitude,
+      lastSeen: artisan.lastSeen
     });
-  } catch (error: any) {
-    console.error('Error getting artisan status:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to get artisan status',
-      error: error?.message || 'An unknown error occurred'
-    });
+  } catch (error) {
+    next(error);
   }
 };

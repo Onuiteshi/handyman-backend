@@ -1,206 +1,290 @@
-import { PrismaClient, UserRole } from '../src/generated/prisma';
-import * as bcrypt from 'bcryptjs';
-import { hashPassword } from '../src/utils/auth.utils';
+import { PrismaClient, UserRole, AuthProvider } from '../src/generated/prisma';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-async function createAdminUser(prisma: PrismaClient) {
-  const adminEmail = 'admin@handyman.com';
-  
-  // Check if admin already exists
-  const existingAdmin = await prisma.user.findUnique({
-    where: { email: adminEmail }
-  });
-
-  if (!existingAdmin) {
-    const hashedPassword = await hashPassword('admin123');
-    
-    await prisma.user.create({
-      data: {
-        email: adminEmail,
-        phone: '+2348000000000',
-        password: hashedPassword,
-        name: 'Admin User',
-        role: 'ADMIN',
-        profile: {
-          create: {
-            address: 'Admin Address',
-            city: 'Lagos',
-            state: 'Lagos',
-            country: 'Nigeria'
-          }
-        }
-      }
-    });
-    
-    console.log('Admin user created successfully');
-  } else {
-    console.log('Admin user already exists');
-  }
-}
-
 async function main() {
-  // Create admin user first
-  await createAdminUser(prisma);
-  // Create service categories first
+  console.log('🌱 Starting database seeding...');
+
+  // Clear existing data
+  await prisma.oTPVerification.deleteMany();
+  await prisma.artisanServiceCategory.deleteMany();
+  await prisma.artisan.deleteMany();
+  await prisma.customer.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.serviceCategory.deleteMany();
+
+  console.log('🗑️  Cleared existing data');
+
+  // Create service categories
   const categories = await Promise.all([
     prisma.serviceCategory.create({
       data: {
         name: 'Plumbing',
-        description: 'Professional plumbing services including repairs, installations, and maintenance',
-      },
+        description: 'All plumbing services including repairs, installations, and maintenance'
+      }
     }),
     prisma.serviceCategory.create({
       data: {
         name: 'Electrical',
-        description: 'Electrical repairs, installations, and safety inspections',
-      },
+        description: 'Electrical services including wiring, installations, and repairs'
+      }
     }),
     prisma.serviceCategory.create({
       data: {
         name: 'Carpentry',
-        description: 'Woodworking, furniture repair, and general carpentry services',
-      },
+        description: 'Carpentry services including woodwork, repairs, and installations'
+      }
     }),
+    prisma.serviceCategory.create({
+      data: {
+        name: 'Cleaning',
+        description: 'Professional cleaning services for homes and offices'
+      }
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        name: 'Painting',
+        description: 'Interior and exterior painting services'
+      }
+    })
   ]);
 
-  // Create users with profiles
-  const users = await Promise.all([
+  console.log('✅ Created service categories');
+
+  // Create admin user
+  const adminPassword = await bcrypt.hash('admin123', 10);
+  const adminUser = await prisma.user.create({
+    data: {
+      email: 'admin@handyman.com',
+      name: 'System Administrator',
+      role: UserRole.ADMIN,
+      authProvider: AuthProvider.EMAIL,
+      password: adminPassword,
+      isEmailVerified: true,
+      profileComplete: true
+    }
+  });
+
+  console.log('✅ Created admin user');
+
+  // Create customer users
+  const customers = await Promise.all([
     prisma.user.create({
       data: {
         email: 'john.doe@example.com',
-        phone: '+2348012345678',
-        password: await bcrypt.hash('password123', 10),
+        phone: '+1234567890',
         name: 'John Doe',
-        profile: {
+        role: UserRole.CUSTOMER,
+        authProvider: AuthProvider.EMAIL,
+        isEmailVerified: true,
+        isPhoneVerified: true,
+        profileComplete: true,
+        customer: {
           create: {
-            address: '123 Main Street',
-            city: 'Lagos',
-            state: 'Lagos',
-            country: 'Nigeria',
-          },
-        },
-      },
+            preferences: {
+              preferredCategories: ['Plumbing', 'Electrical'],
+              notificationPreferences: {
+                email: true,
+                sms: true
+              }
+            }
+          }
+        }
+      }
     }),
     prisma.user.create({
       data: {
         email: 'jane.smith@example.com',
-        phone: '+2348023456789',
-        password: await bcrypt.hash('password123', 10),
+        phone: '+1987654321',
         name: 'Jane Smith',
-        profile: {
+        role: UserRole.CUSTOMER,
+        authProvider: AuthProvider.EMAIL,
+        isEmailVerified: true,
+        isPhoneVerified: true,
+        profileComplete: true,
+        customer: {
           create: {
-            address: '456 Park Avenue',
-            city: 'Abuja',
-            state: 'FCT',
-            country: 'Nigeria',
-          },
-        },
-      },
+            preferences: {
+              preferredCategories: ['Cleaning', 'Painting'],
+              notificationPreferences: {
+                email: true,
+                sms: false
+              }
+            }
+          }
+        }
+      }
     }),
     prisma.user.create({
       data: {
-        email: 'mike.johnson@example.com',
-        phone: '+2348034567890',
-        password: await bcrypt.hash('password123', 10),
-        name: 'Mike Johnson',
-        profile: {
+        email: 'mike.wilson@example.com',
+        phone: '+1555123456',
+        name: 'Mike Wilson',
+        role: UserRole.CUSTOMER,
+        authProvider: AuthProvider.PHONE,
+        isEmailVerified: false,
+        isPhoneVerified: true,
+        profileComplete: true,
+        customer: {
           create: {
-            address: '789 Oak Road',
-            city: 'Port Harcourt',
-            state: 'Rivers',
-            country: 'Nigeria',
-          },
-        },
-      },
-    }),
+            preferences: {
+              preferredCategories: ['Carpentry'],
+              notificationPreferences: {
+                email: false,
+                sms: true
+              }
+            }
+          }
+        }
+      }
+    })
   ]);
 
-  // Create artisans with profiles and service categories
-  const artisans = await Promise.all([
-    prisma.artisan.create({
+  console.log('✅ Created customer users');
+
+  // Create artisan users
+  const artisanUsers = await Promise.all([
+    prisma.user.create({
       data: {
         email: 'master.plumber@example.com',
-        phone: '+2348045678901',
-        password: await bcrypt.hash('password123', 10),
-        name: 'Master Plumber',
-        experience: 15,
-        bio: 'Professional plumber with 15 years of experience in residential and commercial plumbing',
-        photoUrl: 'https://example.com/plumber.jpg',
-        profile: {
+        phone: '+1234567891',
+        name: 'Bob Johnson',
+        role: UserRole.ARTISAN,
+        authProvider: AuthProvider.EMAIL,
+        isEmailVerified: true,
+        isPhoneVerified: true,
+        profileComplete: true,
+        artisan: {
           create: {
-            address: '321 Water Street',
-            city: 'Lagos',
-            state: 'Lagos',
-            country: 'Nigeria',
-          },
-        },
-        categories: {
-          create: {
-            categoryId: categories[0].id, // Plumbing
-          },
-        },
+            skills: ['Pipe Repair', 'Fixture Installation', 'Drain Cleaning'],
+            experience: 8,
+            portfolio: [
+              'https://example.com/portfolio/plumbing1.jpg',
+              'https://example.com/portfolio/plumbing2.jpg'
+            ],
+            isProfileComplete: true,
+            bio: 'Licensed plumber with 8 years of experience in residential and commercial plumbing.',
+            photoUrl: 'https://example.com/photos/bob-johnson.jpg',
+            isOnline: true,
+            locationTracking: true,
+            latitude: 40.7128,
+            longitude: -74.0060
+          }
+        }
       },
+      include: {
+        artisan: true
+      }
     }),
-    prisma.artisan.create({
+    prisma.user.create({
       data: {
         email: 'electric.master@example.com',
-        phone: '+2348056789012',
-        password: await bcrypt.hash('password123', 10),
-        name: 'Electric Master',
-        experience: 12,
-        bio: 'Certified electrician specializing in residential and commercial electrical work',
-        photoUrl: 'https://example.com/electrician.jpg',
-        profile: {
+        phone: '+1234567892',
+        name: 'Sarah Davis',
+        role: UserRole.ARTISAN,
+        authProvider: AuthProvider.EMAIL,
+        isEmailVerified: true,
+        isPhoneVerified: true,
+        profileComplete: true,
+        artisan: {
           create: {
-            address: '654 Power Avenue',
-            city: 'Abuja',
-            state: 'FCT',
-            country: 'Nigeria',
-          },
-        },
-        categories: {
-          create: {
-            categoryId: categories[1].id, // Electrical
-          },
-        },
+            skills: ['Electrical Wiring', 'Circuit Installation', 'Troubleshooting'],
+            experience: 12,
+            portfolio: [
+              'https://example.com/portfolio/electrical1.jpg',
+              'https://example.com/portfolio/electrical2.jpg'
+            ],
+            isProfileComplete: true,
+            bio: 'Certified electrician specializing in residential and commercial electrical work.',
+            photoUrl: 'https://example.com/photos/sarah-davis.jpg',
+            isOnline: false,
+            locationTracking: false
+          }
+        }
       },
+      include: {
+        artisan: true
+      }
     }),
-    prisma.artisan.create({
+    prisma.user.create({
       data: {
         email: 'wood.craftsman@example.com',
-        phone: '+2348067890123',
-        password: await bcrypt.hash('password123', 10),
-        name: 'Wood Craftsman',
-        experience: 20,
-        bio: 'Master carpenter with expertise in custom furniture and home renovations',
-        photoUrl: 'https://example.com/carpenter.jpg',
-        profile: {
+        phone: '+1234567893',
+        name: 'Tom Anderson',
+        role: UserRole.ARTISAN,
+        authProvider: AuthProvider.EMAIL,
+        isEmailVerified: true,
+        isPhoneVerified: true,
+        profileComplete: true,
+        artisan: {
           create: {
-            address: '987 Timber Road',
-            city: 'Port Harcourt',
-            state: 'Rivers',
-            country: 'Nigeria',
-          },
-        },
-        categories: {
-          create: {
-            categoryId: categories[2].id, // Carpentry
-          },
-        },
+            skills: ['Custom Furniture', 'Cabinet Making', 'Wood Repairs'],
+            experience: 15,
+            portfolio: [
+              'https://example.com/portfolio/carpentry1.jpg',
+              'https://example.com/portfolio/carpentry2.jpg'
+            ],
+            isProfileComplete: true,
+            bio: 'Master carpenter with 15 years of experience in custom woodwork and furniture making.',
+            photoUrl: 'https://example.com/photos/tom-anderson.jpg',
+            isOnline: true,
+            locationTracking: true,
+            latitude: 40.7589,
+            longitude: -73.9851
+          }
+        }
       },
-    }),
+      include: {
+        artisan: true
+      }
+    })
   ]);
 
-  console.log('Database has been seeded. 🌱');
-  console.log('Created users:', users.length);
-  console.log('Created artisans:', artisans.length);
-  console.log('Created service categories:', categories.length);
+  console.log('✅ Created artisan users');
+
+  // Assign categories to artisans
+  await Promise.all([
+    // Bob Johnson (Plumber) - Plumbing category
+    prisma.artisanServiceCategory.create({
+      data: {
+        artisanId: artisanUsers[0].artisan!.id,
+        categoryId: categories[0].id // Plumbing
+      }
+    }),
+    // Sarah Davis (Electrician) - Electrical category
+    prisma.artisanServiceCategory.create({
+      data: {
+        artisanId: artisanUsers[1].artisan!.id,
+        categoryId: categories[1].id // Electrical
+      }
+    }),
+    // Tom Anderson (Carpenter) - Carpentry category
+    prisma.artisanServiceCategory.create({
+      data: {
+        artisanId: artisanUsers[2].artisan!.id,
+        categoryId: categories[2].id // Carpentry
+      }
+    })
+  ]);
+
+  console.log('✅ Assigned categories to artisans');
+
+  console.log('🎉 Database seeding completed successfully!');
+  console.log('\n📊 Seeded Data Summary:');
+  console.log(`- ${categories.length} service categories`);
+  console.log(`- ${customers.length} customer users`);
+  console.log(`- ${artisanUsers.length} artisan users`);
+  console.log(`- 1 admin user`);
+  console.log('\n🔑 Test Credentials:');
+  console.log('Admin: admin@handyman.com / admin123');
+  console.log('Customer: john.doe@example.com');
+  console.log('Artisan: master.plumber@example.com');
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error('❌ Error during seeding:', e);
     process.exit(1);
   })
   .finally(async () => {

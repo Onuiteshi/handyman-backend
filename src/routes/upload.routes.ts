@@ -17,7 +17,7 @@ router.post(
   },
   upload.single('photo'),
   (req: Request, res: Response, next: NextFunction) => {
-    uploadArtisanPhoto(req as AuthRequest, res, next);
+    uploadArtisanPhoto(req as any, res, next);
   }
 );
 
@@ -32,7 +32,7 @@ router.post(
   },
   upload.single('document'),
   (req: Request, res: Response, next: NextFunction) => {
-    uploadIdDocument(req as AuthRequest, res, next);
+    uploadIdDocument(req as any, res, next);
   }
 );
 
