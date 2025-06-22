@@ -143,7 +143,7 @@ export const updateCategory = async (
     };
 
     res.json(response);
-  } catch (error) {
+  } catch (error:any) {
     console.error('Error updating category:', error);
     if (error.code === 'P2025') {
       const response: ApiResponse = {
@@ -180,7 +180,7 @@ export const deleteCategory = async (
     };
 
     res.json(response);
-  } catch (error) {
+  } catch (error:any) {
     console.error('Error deleting category:', error);
     if (error.code === 'P2025') {
       const response: ApiResponse = {
@@ -221,6 +221,11 @@ export const addCategoryToArtisan = async (
         error: 'Artisan not found',
       });
     }
+
+    // Check if the category exists
+    const category = await prisma.serviceCategory.findUnique({
+      where: { id: categoryId },
+    });
 
     if (!category) {
       const response: ApiResponse = {
@@ -268,7 +273,7 @@ export const addCategoryToArtisan = async (
     };
 
     res.status(201).json(response);
-  } catch (error) {
+  } catch (error:any) {
     console.error('Error adding category to artisan:', error);
     
     if (error.code === 'P2002') {
@@ -343,7 +348,7 @@ export const removeCategoryFromArtisan = async (
     };
 
     res.json(response);
-  } catch (error) {
+  } catch (error:any) {
     console.error('Error removing category from artisan:', error);
     
     if (error.code === 'P2025') {

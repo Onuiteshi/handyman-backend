@@ -7,7 +7,8 @@ export interface MulterRequest extends Request {
   file?: Express.Multer.File;
   user?: {
     id: string;
-    role: string;
+    type: 'user' | 'artisan' | 'admin';
+    role?: 'USER' | 'ARTISAN' | 'ADMIN';
   };
 }
 

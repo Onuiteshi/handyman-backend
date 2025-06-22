@@ -1,0 +1,579 @@
+{
+  "info": {
+    "name": "Handyman Backend API",
+    "description": "API documentation for Handyman Backend service",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Artisan Status",
+      "description": "Artisan status and location tracking endpoints",
+      "item": [
+        {
+          "name": "Get Artisan Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{artisan_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/artisan/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "artisan", "status"]
+            },
+            "description": "Get the current status and location of the authenticated artisan"
+          }
+        },
+        {
+          "name": "Update Online Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{artisan_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isOnline\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/artisan/online-status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "artisan", "online-status"]
+            },
+            "description": "Toggle the artisan's online status"
+          }
+        },
+        {
+          "name": "Update Location Consent",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{artisan_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locationTracking\": true,\n  \"latitude\": 40.7128,\n  \"longitude\": -74.0060\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/artisan/location-consent",
+              "host": ["{{base_url}}"],
+              "path": ["api", "artisan", "location-consent"]
+            },
+            "description": "Update location tracking consent and set initial location"
+          }
+        },
+        {
+          "name": "Update Location",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{artisan_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 40.7128,\n  \"longitude\": -74.0060\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/artisan/location",
+              "host": ["{{base_url}}"],
+              "path": ["api", "artisan", "location"]
+            },
+            "description": "Update the artisan's current location"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "description": "Authentication endpoints",
+      "item": [
+        {
+          "name": "User Signup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"user@example.com\",\n  \"phone\": \"+1234567890\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/user/signup",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "user", "signup"]
+            },
+            "description": "Create a new user account"
+          }
+        },
+        {
+          "name": "User Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/user/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "user", "login"]
+            },
+            "description": "Authenticate user and get access token"
+          }
+        },
+        {
+          "name": "Artisan Signup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Artisan Name\",\n  \"email\": \"artisan@example.com\",\n  \"phone\": \"+1234567891\",\n  \"password\": \"password123\",\n  \"experience\": 5,\n  \"bio\": \"Professional handyman with 5 years of experience\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/artisan/signup",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "artisan", "signup"]
+            },
+            "description": "Create a new artisan account"
+          }
+        },
+        {
+          "name": "Artisan Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"artisan@example.com\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/artisan/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "artisan", "login"]
+            },
+            "description": "Authenticate artisan and get access token"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "description": "User management endpoints",
+      "item": [
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "profile"]
+            },
+            "description": "Get authenticated user's profile"
+          }
+        },
+        {
+          "name": "Update User Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"phone\": \"+1234567890\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "profile"]
+            },
+            "description": "Update user profile"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Artisans",
+      "description": "Artisan management endpoints",
+      "item": [
+        {
+          "name": "Get Artisan Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{artisan_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/artisans/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "artisans", "profile"]
+            },
+            "description": "Get authenticated artisan's profile"
+          }
+        },
+        {
+          "name": "Update Artisan Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{artisan_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Artisan Name\",\n  \"phone\": \"+1234567891\",\n  \"experience\": 6,\n  \"bio\": \"Updated bio with more details\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/artisans/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "artisans", "profile"]
+            },
+            "description": "Update artisan profile"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Service Categories",
+      "description": "Service category management endpoints",
+      "item": [
+        {
+          "name": "Get All Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/service-categories",
+              "host": ["{{base_url}}"],
+              "path": ["api", "service-categories"]
+            },
+            "description": "Get all service categories"
+          }
+        },
+        {
+          "name": "Get Category by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/service-categories/550e8400-e29b-41d4-a716-446655440000",
+              "host": ["{{base_url}}"],
+              "path": ["api", "service-categories", "550e8400-e29b-41d4-a716-446655440000"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "550e8400-e29b-41d4-a716-446655440000"
+                }
+              ]
+            },
+            "description": "Get a specific category by ID"
+          }
+        },
+        {
+          "name": "Create Category (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Plumbing\",\n  \"description\": \"Plumbing services\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/service-categories",
+              "host": ["{{base_url}}"],
+              "path": ["api", "service-categories"]
+            },
+            "description": "Create a new service category (Admin only)"
+          }
+        },
+        {
+          "name": "Update Category (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Category Name\",\n  \"description\": \"Updated description\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/service-categories/550e8400-e29b-41d4-a716-446655440000",
+              "host": ["{{base_url}}"],
+              "path": ["api", "service-categories", "550e8400-e29b-41d4-a716-446655440000"]
+            },
+            "description": "Update a service category (Admin only)"
+          }
+        },
+        {
+          "name": "Delete Category (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/service-categories/550e8400-e29b-41d4-a716-446655440000",
+              "host": ["{{base_url}}"],
+              "path": ["api", "service-categories", "550e8400-e29b-41d4-a716-446655440000"]
+            },
+            "description": "Delete a service category (Admin only)"
+          }
+        },
+        {
+          "name": "Add Category to Artisan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{artisan_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/service-categories/550e8400-e29b-41d4-a716-446655440000/artisan",
+              "host": ["{{base_url}}"],
+              "path": ["api", "service-categories", "550e8400-e29b-41d4-a716-446655440000", "artisan"]
+            },
+            "description": "Add a service category to artisan's profile"
+          }
+        },
+        {
+          "name": "Remove Category from Artisan",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{artisan_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/service-categories/550e8400-e29b-41d4-a716-446655440000/artisan",
+              "host": ["{{base_url}}"],
+              "path": ["api", "service-categories", "550e8400-e29b-41d4-a716-446655440000", "artisan"]
+            },
+            "description": "Remove a service category from artisan's profile"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Uploads",
+      "description": "File upload endpoints",
+      "item": [
+        {
+          "name": "Upload Artisan Photo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{artisan_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "photo",
+                  "type": "file",
+                  "src": "/path/to/photo.jpg"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/uploads/artisan/photo",
+              "host": ["{{base_url}}"],
+              "path": ["api", "uploads", "artisan", "photo"]
+            },
+            "description": "Upload artisan profile photo"
+          }
+        },
+        {
+          "name": "Upload Artisan ID Document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{artisan_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "document",
+                  "type": "file",
+                  "src": "/path/to/id_document.pdf"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/uploads/artisan/id-document",
+              "host": ["{{base_url}}"],
+              "path": ["api", "uploads", "artisan", "id-document"]
+            },
+            "description": "Upload artisan ID document"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "user_token",
+      "value": "",
+      "type": "string",
+      "description": "JWT token for authenticated user"
+    },
+    {
+      "key": "artisan_token",
+      "value": "",
+      "type": "string",
+      "description": "JWT token for authenticated artisan"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string",
+      "description": "JWT token for admin user"
+    }
+  ]
+}
