@@ -1,0 +1,135 @@
+## 🛠️ GitHub Issue Template (Week 3 – Backend)
+
+name: Week 3 – Backend: Service Request + Smart Matching
+
+title: "[Backend] Job Request + Smart Matching + Estimation"
+labels: [backend, priority:high, week:3, notifications]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🎯 Objective  
+        Implement the service request API, smart artisan matching engine (distance, rating, specialization), and a stub for service cost estimation.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: ✅ Tasks Checklist
+      options:
+        - label: Create `jobs` table with fields
+          description: >
+            - id (PK)
+            - user_id (FK)
+            - service_category_id (FK)
+            - description (TEXT)
+            - photos (JSONB array of URLs)
+            - location (GEOGRAPHY/GEOMETRY)
+            - preferred_time (TIMESTAMP)
+            - status (ENUM: 'pending', 'matched', 'in_progress', 'completed', 'cancelled')
+            - created_at (TIMESTAMP)
+            - updated_at (TIMESTAMP)
+
+        - label: Build `POST /api/jobs` endpoint
+          description: >
+            - Validate request body
+            - Handle file uploads for photos
+            - Save job to database
+            - Return 201 with job details
+
+        - label: Implement Smart Matching Algorithm
+          description: >
+            - Query online artisans within 50km radius
+            - Calculate match score using:
+              - Distance (50% weight): (50 - distance_km)/10
+              - Rating (30% weight): (rating/5) * 3
+              - Specialization (20% weight): (specialization_level/5) * 2
+            - Sort artisans by total score (descending)
+            - Consider only artisans with minimum 3.0 rating
+
+        - label: Notifications
+          description: >
+            - Send FCM notifications to top 5 matching artisans
+            - Include job details and estimated price range
+            - Add rate limiting (max 3 notifications per hour per artisan)
+
+        - label: Build `GET /api/estimate?service_id=ID` endpoint
+          description: >
+            - Return placeholder cost range based on service category
+            - Example: { min: 5000, max: 15000, currency: 'NGN' }
+            - Include suggested price ranges for different service tiers
+
+        - label: Analytics
+          description: >
+            - Log all match scores per artisan per job
+            - Track response times and acceptance rates
+            - Store in `job_matches` table with fields:
+              - job_id (FK)
+              - artisan_id (FK)
+              - match_score (FLOAT)
+              - notified_at (TIMESTAMP)
+              - responded_at (TIMESTAMP, nullable)
+              - status (ENUM: 'pending', 'accepted', 'rejected', 'expired')
+
+        - label: Build `GET /api/jobs` endpoint
+          description: >
+            - For admins: List all jobs with filters
+            - For users: List their own jobs
+            - Include pagination (default 20 items per page)
+            - Allow filtering by status, date range
+
+  - type: textarea
+    id: context
+    attributes:
+      label: 🔍 Additional Context
+      description: |
+        ## API Request/Response Examples
+
+        ### Create Job
+        ```json
+        // Request
+        {
+          "service_category_id": 1,
+          "description": "Need help with plumbing",
+          "location": { "type": "Point", "coordinates": [3.3792, 6.5244] },
+          "preferred_time": "2025-07-01T10:00:00Z"
+        }
+
+
+        // Response (201 Created)
+        {
+          "id": 123,
+          "status": "pending",
+          "match_score": null,
+          "estimated_price": { "min": 5000, "max": 15000, "currency": "NGN" }
+        }
+        ```
+
+        ### Get Estimate
+        ```
+        GET /api/estimate?service_id=1
+        Response:
+        {
+          "service_id": 1,
+          "service_name": "Plumbing",
+          "estimated_price": {
+            "basic": { "min": 5000, "max": 10000, "description": "Standard service" },
+            "premium": { "min": 10000, "max": 20000, "description": "Emergency service" }
+          },
+          "average_response_time": "2.5 hours",
+          "popular_addons": ["Pipe replacement", "Leak detection"]
+        }
+        ```
+
+        ## Edge Cases to Consider
+        - Handle no available artisans in the area
+        - Job cancellation during matching
+        - Artisan rejects the job (should trigger next best match)
+        - Job expiration (e.g., no response in 1 hour)
+        - Concurrent job acceptance by multiple artisans
+
+        ## Performance Considerations
+        - Add database indexes for location-based queries
+        - Cache service category data
+        - Consider rate limiting for job submissions
+        - Add job queue for sending notifications

@@ -2,6 +2,11 @@
 
 A comprehensive backend service for a handyman platform that connects customers with skilled artisans. This RESTful API handles user and artisan authentication, profile management, service categories, and location-based artisan discovery.
 
+## 📚 Documentation
+
+- **[Profile Switching Guide](PROFILE_SWITCHING_GUIDE.md)** - Comprehensive guide for the multi-profile switching feature
+- **[Authentication Refactor](AUTHENTICATION_REFACTOR.md)** - Detailed documentation of the authentication system architecture
+
 ## 🚀 Key Features
 
 ### Authentication & Authorization
@@ -10,12 +15,14 @@ A comprehensive backend service for a handyman platform that connects customers 
 - **Password-based authentication** for Admin users only
 - JWT-based session management with refresh tokens
 - Role-based access control (Customer, Artisan, Admin)
+- **Multi-profile switching** with separate authentication per profile
 
 ### User Management
 - Unified User table with role-based profiles
 - Customer and Artisan profile management
 - OTP verification for email and phone
 - Secure token management with logout functionality
+- **Profile switching** - Users can manage multiple profiles (personal, business, freelance, corporate)
 
 ### Artisan Management
 - Artisan registration with OTP verification
@@ -112,6 +119,18 @@ npm run dev
 - POST `/api/auth/refresh` - Refresh access token
 - POST `/api/auth/logout` - Logout and invalidate token
 
+### Profile Management
+- POST `/api/profiles/create` - Create a new profile
+- GET `/api/profiles/my-profiles` - Get user's profiles
+- POST `/api/profiles/switch` - Switch to a profile
+- POST `/api/profiles/authenticate` - Authenticate for profile switch
+- POST `/api/profiles/refresh-session` - Refresh profile session
+- PUT `/api/profiles/:profileId` - Update profile
+- DELETE `/api/profiles/:profileId` - Delete profile
+- POST `/api/profiles/:profileId/invite` - Invite user to profile
+- POST `/api/profiles/invitations/:invitationId/accept` - Accept invitation
+- GET `/api/profiles/:profileId/analytics` - Get profile analytics
+
 ### Customer Profile
 - GET `/api/users/profile` - Get customer profile
 - PUT `/api/users/profile` - Update customer profile
@@ -164,35 +183,43 @@ The database is designed with a unified authentication system and role-based pro
 - Role-based access control (CUSTOMER, ARTISAN, ADMIN)
 - JWT token management with refresh tokens
 
-#### 2. Customer
+#### 2. Profile (Multi-Profile System)
+- Multiple profiles per user (PERSONAL, BUSINESS, FREELANCE, CORPORATE)
+- Profile-specific settings and metadata
+- Profile members and permissions
+- Profile sessions for authentication
+
+#### 3. Customer
 - Extends user functionality for regular customers
 - Stores customer-specific preferences and settings
 - One-to-one relationship with User
 
-#### 3. Artisan
+#### 4. Artisan
 - Extends user functionality with artisan-specific fields
 - Stores professional information (experience, bio, skills, portfolio)
 - Tracks online status, location, and verification status
 - Has a many-to-many relationship with ServiceCategory
 - One-to-one relationship with User
 
-#### 4. ServiceCategory
+#### 5. ServiceCategory
 - Defines different service types (e.g., Plumbing, Electrical, Carpentry)
 - Has a many-to-many relationship with Artisan
 - Managed by admin users only
 
-#### 5. ArtisanServiceCategory (Junction Table)
+#### 6. ArtisanServiceCategory (Junction Table)
 - Manages the many-to-many relationship between Artisan and ServiceCategory
 - Tracks when categories were added to artisans
 
-#### 6. OTP
+#### 7. OTP
 - Manages OTP generation, storage, and verification
-- Supports different OTP types (SIGNUP, LOGIN, VERIFICATION)
+- Supports different OTP types (SIGNUP, LOGIN, VERIFICATION, PROFILE_SWITCH)
 - Includes expiration and usage tracking
 
 ### Key Relationships
 - One-to-One: User ↔ Customer
 - One-to-One: User ↔ Artisan
+- One-to-Many: User ↔ Profile (owned profiles)
+- Many-to-Many: User ↔ Profile (through ProfileMember)
 - Many-to-Many: Artisan ↔ ServiceCategory (through ArtisanServiceCategory)
 - One-to-Many: User ↔ OTP
 
@@ -203,6 +230,10 @@ The database is designed with a unified authentication system and role-based pro
 2. **Login**: User provides identifier → OTP sent → User verifies OTP → JWT tokens issued
 3. **Admin Login**: Admin provides email/password → JWT tokens issued
 
+#### Profile Switching Authentication
+1. **Profile Switch**: User requests profile switch → Check if authentication required → Send OTP if needed
+2. **Profile Authentication**: User provides OTP → Verify OTP → Create profile session → Issue profile tokens
+
 #### OAuth Authentication
 1. **Google OAuth**: User provides Google token → Account created/authenticated → JWT tokens issued
 
@@ -212,6 +243,7 @@ The database is designed with a unified authentication system and role-based pro
 - **Password-based authentication** for admin users only (hashed with bcrypt)
 - **Google OAuth integration** for social login
 - JWT tokens for session management with refresh token support
+- **Profile-specific authentication** with separate sessions
 - Input validation using express-validator
 - Role-based access control (RBAC)
 - CORS enabled
@@ -219,6 +251,7 @@ The database is designed with a unified authentication system and role-based pro
 - Token expiration and validation
 - Secure HTTP headers
 - OTP expiration and rate limiting
+- Profile permission system
 
 ## Error Handling
 
@@ -240,6 +273,7 @@ The project includes comprehensive test coverage:
 - Integration tests for API endpoints
 - Authentication flow testing
 - Database operation testing
+- Profile switching functionality testing
 
 Run tests with:
 ```bash

@@ -8,6 +8,7 @@ import artisanRoutes from './routes/artisan.routes';
 import serviceCategoryRoutes from './routes/serviceCategory.routes';
 import uploadRoutes from './routes/upload.routes';
 import artisanStatusRoutes from './routes/artisanStatus.routes';
+import profileRoutes from './routes/profile.routes';
 import prisma from './lib/prisma';
 
 dotenv.config();
@@ -37,6 +38,7 @@ apiRouter.use('/artisans', artisanRoutes);
 apiRouter.use('/service-categories', serviceCategoryRoutes);
 apiRouter.use('/uploads', uploadRoutes);
 apiRouter.use('/artisan', artisanStatusRoutes);
+apiRouter.use('/profiles', profileRoutes);
 
 app.use('/api', apiRouter);
 
