@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Handyman Backend API",
-    "description": "API documentation for Handyman Backend service with OTP-based authentication",
+    "description": "API documentation for Handyman Backend service with OTP-based authentication and multi-profile switching",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -237,7 +237,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"googleToken\": \"google_oauth_token_here\",\n  \"name\": \"User Name\",\n  \"dateOfBirth\": \"1990-01-01\",\n  \"role\": \"CUSTOMER\"\n}",
+              "raw": "{\n  \"googleToken\": \"google_oauth_token_here\",\n  \"name\": \"User Name\",\n  \"role\": \"CUSTOMER\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -249,7 +249,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "auth", "google"]
             },
-            "description": "Authenticate using Google OAuth token"
+            "description": "Google OAuth authentication"
           }
         },
         {
@@ -264,7 +264,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"adminpassword123\"\n}",
+              "raw": "{\n  \"email\": \"admin@handyman.com\",\n  \"password\": \"admin123\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -276,7 +276,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "auth", "admin", "login"]
             },
-            "description": "Admin login with email and password (password-based only)"
+            "description": "Admin login with email and password"
           }
         },
         {
@@ -291,7 +291,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"token\": \"refresh_token_here\"\n}",
+              "raw": "{\n  \"refreshToken\": \"refresh_token_here\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -312,19 +312,10 @@
             "method": "POST",
             "header": [
               {
-                "key": "Content-Type",
-                "value": "application/json"
+                "key": "Authorization",
+                "value": "Bearer {{customer_token}}"
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"token\": \"access_token_here\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
             "url": {
               "raw": "{{base_url}}/api/auth/logout",
               "host": ["{{base_url}}"],
@@ -336,8 +327,393 @@
       ]
     },
     {
-      "name": "Customer Management",
-      "description": "Customer profile and preference management endpoints",
+      "name": "Profile Management",
+      "description": "Multi-profile switching and management endpoints with separate authentication per profile",
+      "item": [
+        {
+          "name": "Create Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customer_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Business Profile\",\n  \"type\": \"BUSINESS\",\n  \"description\": \"Professional services profile\",\n  \"avatar\": \"https://example.com/avatar.jpg\",\n  \"settings\": {\n    \"notifications\": true,\n    \"privacy\": \"public\"\n  },\n  \"metadata\": {\n    \"industry\": \"construction\",\n    \"specialization\": \"electrical\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/profiles/create",
+              "host": ["{{base_url}}"],
+              "path": ["api", "profiles", "create"]
+            },
+            "description": "Create a new profile for the authenticated user"
+          }
+        },
+        {
+          "name": "Get User Profiles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customer_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/profiles/my-profiles",
+              "host": ["{{base_url}}"],
+              "path": ["api", "profiles", "my-profiles"]
+            },
+            "description": "Get all profiles for the authenticated user"
+          }
+        },
+        {
+          "name": "Switch to Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customer_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profileId\": \"{{profile_id}}\",\n  \"identifier\": \"user@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/profiles/switch",
+              "host": ["{{base_url}}"],
+              "path": ["api", "profiles", "switch"]
+            },
+            "description": "Switch to a specific profile (may require authentication)"
+          }
+        },
+        {
+          "name": "Authenticate Profile Switch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profileId\": \"{{profile_id}}\",\n  \"identifier\": \"user@example.com\",\n  \"otp\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/profiles/authenticate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "profiles", "authenticate"]
+            },
+            "description": "Authenticate for profile switch using OTP"
+          }
+        },
+        {
+          "name": "Refresh Profile Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{profile_refresh_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/profiles/refresh-session",
+              "host": ["{{base_url}}"],
+              "path": ["api", "profiles", "refresh-session"]
+            },
+            "description": "Refresh profile session using refresh token"
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{profile_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Profile Name\",\n  \"description\": \"Updated profile description\",\n  \"avatar\": \"https://example.com/new-avatar.jpg\",\n  \"settings\": {\n    \"notifications\": false,\n    \"privacy\": \"private\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/profiles/{{profile_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "profiles", "{{profile_id}}"]
+            },
+            "description": "Update profile information (requires profile token)"
+          }
+        },
+        {
+          "name": "Delete Profile",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{profile_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/profiles/{{profile_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "profiles", "{{profile_id}}"]
+            },
+            "description": "Delete a profile (owner only, requires profile token)"
+          }
+        },
+        {
+          "name": "Invite User to Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{profile_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invitedEmail\": \"newuser@example.com\",\n  \"role\": \"CUSTOMER\",\n  \"message\": \"Join our team!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/profiles/{{profile_id}}/invite",
+              "host": ["{{base_url}}"],
+              "path": ["api", "profiles", "{{profile_id}}", "invite"]
+            },
+            "description": "Invite a user to join the profile"
+          }
+        },
+        {
+          "name": "Accept Profile Invitation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customer_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{user_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/profiles/invitations/{{invitation_id}}/accept",
+              "host": ["{{base_url}}"],
+              "path": ["api", "profiles", "invitations", "{{invitation_id}}", "accept"]
+            },
+            "description": "Accept a profile invitation"
+          }
+        },
+        {
+          "name": "Get Profile Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{profile_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/profiles/{{profile_id}}/analytics",
+              "host": ["{{base_url}}"],
+              "path": ["api", "profiles", "{{profile_id}}", "analytics"]
+            },
+            "description": "Get analytics for a specific profile"
+          }
+        },
+        {
+          "name": "Update Customer Profile Data",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{profile_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"preferences\": {\n    \"language\": \"en\",\n    \"timezone\": \"UTC\"\n  },\n  \"billingAddress\": {\n    \"street\": \"123 Main St\",\n    \"city\": \"New York\",\n    \"zipCode\": \"10001\"\n  },\n  \"paymentMethods\": {\n    \"default\": \"card\",\n    \"cards\": [\"visa\", \"mastercard\"]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/profiles/{{profile_id}}/customer",
+              "host": ["{{base_url}}"],
+              "path": ["api", "profiles", "{{profile_id}}", "customer"]
+            },
+            "description": "Update customer-specific profile data"
+          }
+        },
+        {
+          "name": "Update Artisan Profile Data",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{profile_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"skills\": [\"Plumbing\", \"Electrical\", \"Carpentry\"],\n  \"experience\": 5,\n  \"portfolio\": [\"https://example.com/work1.jpg\", \"https://example.com/work2.jpg\"],\n  \"bio\": \"Experienced handyman with 5 years in the industry\",\n  \"photoUrl\": \"https://example.com/photo.jpg\",\n  \"idDocumentUrl\": \"https://example.com/id.pdf\",\n  \"hourlyRate\": 25.50,\n  \"availability\": {\n    \"monday\": {\"start\": \"09:00\", \"end\": \"17:00\"},\n    \"tuesday\": {\"start\": \"09:00\", \"end\": \"17:00\"}\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/profiles/{{profile_id}}/artisan",
+              "host": ["{{base_url}}"],
+              "path": ["api", "profiles", "{{profile_id}}", "artisan"]
+            },
+            "description": "Update artisan-specific profile data"
+          }
+        },
+        {
+          "name": "Get Profile Invitations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{profile_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/profiles/{{profile_id}}/invitations",
+              "host": ["{{base_url}}"],
+              "path": ["api", "profiles", "{{profile_id}}", "invitations"]
+            },
+            "description": "Get all invitations for a profile"
+          }
+        },
+        {
+          "name": "Get Profile Members",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{profile_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/profiles/{{profile_id}}/members",
+              "host": ["{{base_url}}"],
+              "path": ["api", "profiles", "{{profile_id}}", "members"]
+            },
+            "description": "Get all members of a profile"
+          }
+        },
+        {
+          "name": "Revoke Profile Session",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{profile_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/profiles/sessions/{{session_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "profiles", "sessions", "{{session_id}}"]
+            },
+            "description": "Revoke a specific profile session"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "description": "User profile management endpoints",
       "item": [
         {
           "name": "Get Customer Profile",
@@ -354,7 +730,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "users", "profile"]
             },
-            "description": "Get authenticated customer's profile"
+            "description": "Get customer profile information"
           }
         },
         {
@@ -373,7 +749,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Updated Name\",\n  \"phone\": \"+1234567890\",\n  \"dateOfBirth\": \"1990-01-01\"\n}",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"dateOfBirth\": \"1990-01-01\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -404,7 +780,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"preferences\": {\n    \"notifications\": true,\n    \"language\": \"en\",\n    \"timezone\": \"UTC\"\n  }\n}",
+              "raw": "{\n  \"preferences\": {\n    \"language\": \"en\",\n    \"notifications\": true,\n    \"timezone\": \"UTC\"\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -422,8 +798,8 @@
       ]
     },
     {
-      "name": "Artisan Management",
-      "description": "Artisan profile and service management endpoints",
+      "name": "Artisans",
+      "description": "Artisan profile and category management endpoints",
       "item": [
         {
           "name": "Get Artisan Profile",
@@ -440,7 +816,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "artisans", "profile"]
             },
-            "description": "Get authenticated artisan's profile"
+            "description": "Get artisan profile information"
           }
         },
         {
@@ -459,7 +835,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Updated Artisan Name\",\n  \"phone\": \"+1234567891\",\n  \"experience\": 6,\n  \"bio\": \"Updated bio with more details\",\n  \"skills\": [\"plumbing\", \"electrical\"],\n  \"portfolio\": [\"project1.jpg\", \"project2.jpg\"]\n}",
+              "raw": "{\n  \"skills\": [\"Plumbing\", \"Electrical\"],\n  \"experience\": 3,\n  \"bio\": \"Experienced handyman\",\n  \"portfolio\": [\"https://example.com/work1.jpg\"]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -475,7 +851,7 @@
           }
         },
         {
-          "name": "Add Service Categories",
+          "name": "Add Service Categories to Artisan",
           "request": {
             "method": "POST",
             "header": [
@@ -490,7 +866,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"categoryIds\": [\"550e8400-e29b-41d4-a716-446655440000\", \"660e8400-e29b-41d4-a716-446655440001\"]\n}",
+              "raw": "{\n  \"categoryIds\": [\"550e8400-e29b-41d4-a716-446655440000\", \"550e8400-e29b-41d4-a716-446655440001\"]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -506,7 +882,7 @@
           }
         },
         {
-          "name": "Remove Service Categories",
+          "name": "Remove Service Categories from Artisan",
           "request": {
             "method": "DELETE",
             "header": [
@@ -539,8 +915,8 @@
       ]
     },
     {
-      "name": "Artisan Status",
-      "description": "Artisan status and location tracking endpoints",
+      "name": "Artisan Status & Location",
+      "description": "Artisan online status and location tracking endpoints",
       "item": [
         {
           "name": "Get Artisan Status",
@@ -557,7 +933,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "artisan", "status"]
             },
-            "description": "Get the current status and location of the authenticated artisan"
+            "description": "Get artisan online status and location"
           }
         },
         {
@@ -567,8 +943,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{artisan_token}}",
-                "type": "text"
+                "value": "Bearer {{artisan_token}}"
               },
               {
                 "key": "Content-Type",
@@ -577,14 +952,19 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"isOnline\": true\n}"
+              "raw": "{\n  \"isOnline\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{base_url}}/api/artisan/online-status",
               "host": ["{{base_url}}"],
               "path": ["api", "artisan", "online-status"]
             },
-            "description": "Toggle the artisan's online status"
+            "description": "Update artisan online status"
           }
         },
         {
@@ -594,8 +974,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{artisan_token}}",
-                "type": "text"
+                "value": "Bearer {{artisan_token}}"
               },
               {
                 "key": "Content-Type",
@@ -604,14 +983,19 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"locationTracking\": true,\n  \"latitude\": 40.7128,\n  \"longitude\": -74.0060\n}"
+              "raw": "{\n  \"locationTracking\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{base_url}}/api/artisan/location-consent",
               "host": ["{{base_url}}"],
               "path": ["api", "artisan", "location-consent"]
             },
-            "description": "Update location tracking consent and set initial location"
+            "description": "Update location tracking consent"
           }
         },
         {
@@ -621,8 +1005,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{artisan_token}}",
-                "type": "text"
+                "value": "Bearer {{artisan_token}}"
               },
               {
                 "key": "Content-Type",
@@ -631,21 +1014,26 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"latitude\": 40.7128,\n  \"longitude\": -74.0060\n}"
+              "raw": "{\n  \"latitude\": 40.7128,\n  \"longitude\": -74.0060\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{base_url}}/api/artisan/location",
               "host": ["{{base_url}}"],
               "path": ["api", "artisan", "location"]
             },
-            "description": "Update the artisan's current location"
+            "description": "Update artisan current location"
           }
         }
       ]
     },
     {
       "name": "Service Categories",
-      "description": "Service category management endpoints",
+      "description": "Service category management endpoints (Admin only)",
       "item": [
         {
           "name": "Get All Categories",
@@ -847,6 +1235,42 @@
       "value": "",
       "type": "string",
       "description": "JWT token for admin user"
+    },
+    {
+      "key": "profile_token",
+      "value": "",
+      "type": "string",
+      "description": "Profile-specific JWT token for profile operations"
+    },
+    {
+      "key": "profile_refresh_token",
+      "value": "",
+      "type": "string",
+      "description": "Profile refresh token for session renewal"
+    },
+    {
+      "key": "profile_id",
+      "value": "",
+      "type": "string",
+      "description": "Profile ID for profile-specific operations"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string",
+      "description": "User ID for various operations"
+    },
+    {
+      "key": "invitation_id",
+      "value": "",
+      "type": "string",
+      "description": "Invitation ID for accepting invitations"
+    },
+    {
+      "key": "session_id",
+      "value": "",
+      "type": "string",
+      "description": "Session ID for session management"
     }
   ]
 }
