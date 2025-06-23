@@ -30,6 +30,27 @@ enum OTPType {
   SIGNUP
   LOGIN
   VERIFICATION
+  PROFILE_SWITCH
+}
+
+enum ProfileType {
+  PERSONAL
+  BUSINESS
+  FREELANCE
+  CORPORATE
+}
+
+enum ProfileStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+enum ProfileSessionStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
 }
 
 // Unified User table
@@ -59,6 +80,13 @@ model User {
   customer          Customer?
   artisan           Artisan?
   otpVerifications  OTPVerification[]
+  
+  // Profile management relations
+  ownedProfiles     Profile[]
+  profileMemberships ProfileMember[]
+  profileSessions   ProfileSession[]
+  sentInvitations   ProfileInvitation[] @relation("ProfileInvitationsSent")
+  acceptedInvitations ProfileInvitation[] @relation("ProfileInvitationsAccepted")
   
   @@map("users")
 }
@@ -121,12 +149,174 @@ model OTPVerification {
   @@map("otp_verifications")
 }
 
+// Profile Management
+model Profile {
+  id                String        @id @default(uuid())
+  name              String        // Profile display name
+  type              ProfileType   @default(PERSONAL)
+  status            ProfileStatus @default(ACTIVE)
+  description       String?       // Optional profile description
+  avatar            String?       // Profile-specific avatar
+  settings          Json?         // Profile-specific settings
+  metadata          Json?         // Additional profile metadata
+  
+  // Profile owner (the main user account)
+  ownerId           String
+  owner             User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  
+  // Profile members (users who have access to this profile)
+  members           ProfileMember[]
+  
+  // Profile sessions
+  sessions          ProfileSession[]
+  
+  // Profile invitations
+  invitations       ProfileInvitation[]
+  
+  // Profile-specific data
+  customerProfile   CustomerProfile?
+  artisanProfile    ArtisanProfile?
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  @@map("profiles")
+}
+
+// Profile members (users who can access a profile)
+model ProfileMember {
+  id                String        @id @default(uuid())
+  profileId         String
+  userId            String
+  role              UserRole      // Role within this specific profile
+  permissions       Json?         // Profile-specific permissions
+  isActive          Boolean       @default(true)
+  joinedAt          DateTime      @default(now())
+  
+  // Relations
+  profile           Profile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([profileId, userId])
+  @@map("profile_members")
+}
+
+// Profile sessions for authentication
+model ProfileSession {
+  id                String              @id @default(uuid())
+  profileId         String
+  userId            String
+  token             String              @unique
+  refreshToken      String              @unique
+  status            ProfileSessionStatus @default(ACTIVE)
+  expiresAt         DateTime
+  lastActivityAt    DateTime            @default(now())
+  ipAddress         String?
+  userAgent         String?
+  deviceInfo        Json?
+  
+  // Relations
+  profile           Profile             @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  @@map("profile_sessions")
+}
+
+// Profile invitations
+model ProfileInvitation {
+  id                String        @id @default(uuid())
+  profileId         String
+  invitedEmail      String?
+  invitedPhone      String?
+  invitedByUserId   String
+  role              UserRole
+  message           String?       // Optional invitation message
+  expiresAt         DateTime
+  isAccepted        Boolean       @default(false)
+  acceptedAt        DateTime?
+  acceptedByUserId  String?
+  
+  // Relations
+  profile           Profile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  invitedBy         User          @relation("ProfileInvitationsSent", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+  acceptedBy        User?         @relation("ProfileInvitationsAccepted", fields: [acceptedByUserId], references: [id], onDelete: Cascade)
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  @@map("profile_invitations")
+}
+
+// Profile-specific customer data
+model CustomerProfile {
+  id                String        @id @default(uuid())
+  profileId         String        @unique
+  preferences       Json?         // Profile-specific customer preferences
+  billingAddress    Json?         // Profile-specific billing information
+  paymentMethods    Json?         // Profile-specific payment methods
+  serviceHistory    Json?         // Profile-specific service history
+  
+  // Relations
+  profile           Profile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  @@map("customer_profiles")
+}
+
+// Profile-specific artisan data
+model ArtisanProfile {
+  id                String        @id @default(uuid())
+  profileId         String        @unique
+  skills            String[]      // Profile-specific skills
+  experience        Int           // Profile-specific experience
+  portfolio         String[]      // Profile-specific portfolio
+  bio               String?       // Profile-specific bio
+  photoUrl          String?       // Profile-specific photo
+  idDocumentUrl     String?       // Profile-specific ID document
+  isOnline          Boolean       @default(false)
+  locationTracking  Boolean       @default(false)
+  latitude          Float?
+  longitude         Float?
+  lastSeen          DateTime?
+  hourlyRate        Float?        // Profile-specific hourly rate
+  availability      Json?         // Profile-specific availability schedule
+  
+  // Relations
+  profile           Profile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  categories        ArtisanProfileServiceCategory[]
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  @@map("artisan_profiles")
+}
+
+// Many-to-many relationship between Artisan Profiles and Service Categories
+model ArtisanProfileServiceCategory {
+  artisanProfileId  String
+  categoryId        String
+  createdAt         DateTime      @default(now())
+  
+  // Relations
+  artisanProfile    ArtisanProfile @relation(fields: [artisanProfileId], references: [id], onDelete: Cascade)
+  category          ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  @@id([artisanProfileId, categoryId])
+  @@map("artisan_profile_service_categories")
+}
+
 // Service Categories (unchanged)
 model ServiceCategory {
   id                String       @id @default(uuid())
   name              String       @unique
   description       String?
   artisans          ArtisanServiceCategory[]
+  artisanProfiles   ArtisanProfileServiceCategory[]
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   
