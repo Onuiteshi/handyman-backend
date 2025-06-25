@@ -1,7 +1,13 @@
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
-import { UserRole } from '../generated/prisma';
 import { TokenPayload } from '../types/auth.types';
+
+// Define UserRole enum locally to avoid import issues
+enum UserRole {
+  CUSTOMER = 'CUSTOMER',
+  ARTISAN = 'ARTISAN',
+  ADMIN = 'ADMIN'
+}
 
 export interface AuthRequest extends Request {
   user?: TokenPayload;

@@ -1,6 +1,6 @@
 import { Router, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
-import { prisma } from '../index';
+import prisma from '../lib/prisma';
 import { authMiddleware, isCustomer } from '../middleware/auth.middleware';
 import { AuthRequest } from '../middleware/auth.middleware';
 

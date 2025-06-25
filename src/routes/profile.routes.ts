@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
-import { ProfileType, UserRole } from '../generated/prisma';
+import { ProfileType, UserRole } from '@prisma/client';
 import profileService from '../services/profile.service';
 import { 
   profileAuthMiddleware, 

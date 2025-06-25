@@ -9,6 +9,7 @@ import serviceCategoryRoutes from './routes/serviceCategory.routes';
 import uploadRoutes from './routes/upload.routes';
 import artisanStatusRoutes from './routes/artisanStatus.routes';
 import profileRoutes from './routes/profile.routes';
+import jobRoutes from './routes/job.routes';
 import prisma from './lib/prisma';
 
 dotenv.config();
@@ -18,7 +19,7 @@ const app = express();
 // Test database connection
 prisma.$connect()
   .then(() => console.log('Successfully connected to the database'))
-  .catch((error) => console.error('Error connecting to the database:', error));
+  .catch((error: any) => console.error('Error connecting to the database:', error));
 
 // Middleware
 app.use(cors());
@@ -39,6 +40,7 @@ apiRouter.use('/service-categories', serviceCategoryRoutes);
 apiRouter.use('/uploads', uploadRoutes);
 apiRouter.use('/artisan', artisanStatusRoutes);
 apiRouter.use('/profiles', profileRoutes);
+apiRouter.use('/jobs', jobRoutes);
 
 app.use('/api', apiRouter);
 

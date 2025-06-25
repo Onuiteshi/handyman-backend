@@ -1,4 +1,4 @@
-import { PrismaClient, ProfileType, ProfileStatus, ProfileSessionStatus, UserRole, OTPType } from '../generated/prisma';
+import { PrismaClient, ProfileType, ProfileStatus, ProfileSessionStatus, UserRole, OTPType } from '@prisma/client';
 import { generateToken, generateRefreshToken, generateSessionToken } from '../utils/auth.utils';
 import otpService from './otp.service';
 import {

@@ -1,10 +1,36 @@
-import { 
-  ProfileType, 
-  ProfileStatus, 
-  ProfileSessionStatus, 
-  UserRole, 
-  OTPType 
-} from '../generated/prisma';
+// Define enums locally to avoid import issues
+enum ProfileType {
+  PERSONAL = 'PERSONAL',
+  BUSINESS = 'BUSINESS',
+  FREELANCE = 'FREELANCE',
+  CORPORATE = 'CORPORATE'
+}
+
+enum ProfileStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  SUSPENDED = 'SUSPENDED',
+  PENDING_VERIFICATION = 'PENDING_VERIFICATION'
+}
+
+enum ProfileSessionStatus {
+  ACTIVE = 'ACTIVE',
+  EXPIRED = 'EXPIRED',
+  REVOKED = 'REVOKED'
+}
+
+enum UserRole {
+  CUSTOMER = 'CUSTOMER',
+  ARTISAN = 'ARTISAN',
+  ADMIN = 'ADMIN'
+}
+
+enum OTPType {
+  SIGNUP = 'SIGNUP',
+  LOGIN = 'LOGIN',
+  VERIFICATION = 'VERIFICATION',
+  PROFILE_SWITCH = 'PROFILE_SWITCH'
+}
 
 // Profile interfaces
 export interface Profile {

@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { PrismaClient, UserRole, AuthProvider, OTPType } from '../generated/prisma';
+import { PrismaClient, UserRole, AuthProvider, OTPType } from '@prisma/client';
 import { app } from '../index';
 import prisma from '../lib/prisma';
 

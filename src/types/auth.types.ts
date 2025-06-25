@@ -1,4 +1,4 @@
-import { UserRole, AuthProvider, OTPType } from '../generated/prisma';
+import { UserRole, AuthProvider, OTPType } from '@prisma/client';
 
 // Base User interface
 export interface User {
