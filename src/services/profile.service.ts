@@ -1,4 +1,5 @@
-import { PrismaClient, ProfileType, ProfileStatus, ProfileSessionStatus, UserRole, OTPType } from '@prisma/client';
+import prisma from '../lib/prisma';
+import { UserRole, OTPType } from '../types/auth.types';
 import { generateToken, generateRefreshToken, generateSessionToken } from '../utils/auth.utils';
 import otpService from './otp.service';
 import {
@@ -30,7 +31,25 @@ import {
   ProfileNotification
 } from '../types/profile.types';
 
-const prisma = new PrismaClient();
+// Define enums locally to avoid import issues
+enum ProfileType {
+  PERSONAL = 'PERSONAL',
+  BUSINESS = 'BUSINESS',
+  FREELANCE = 'FREELANCE',
+  CORPORATE = 'CORPORATE'
+}
+
+enum ProfileStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  SUSPENDED = 'SUSPENDED'
+}
+
+enum ProfileSessionStatus {
+  ACTIVE = 'ACTIVE',
+  EXPIRED = 'EXPIRED',
+  REVOKED = 'REVOKED'
+}
 
 // In-memory cache for profiles and sessions (in production, use Redis)
 const profileCache = new Map<string, ProfileCache>();
@@ -172,7 +191,7 @@ export class ProfileService {
 
       return {
         message: 'Profiles retrieved successfully',
-        profiles: profiles.map(p => this.convertPrismaProfileToProfile(p))
+        profiles: profiles.map((p: any) => this.convertPrismaProfileToProfile(p))
       };
     } catch (error) {
       console.error('Get user profiles error:', error);
@@ -242,7 +261,7 @@ export class ProfileService {
       }
 
       // Check if user needs to authenticate for this profile
-      const member = profileAccess.members.find(m => m.userId === userId);
+      const member = profileAccess.members.find((m: any) => m.userId === userId);
       const permissions = member?.permissions as Record<string, any> || {};
       const requiresAuth = permissions.requireReauthentication || false;
 
