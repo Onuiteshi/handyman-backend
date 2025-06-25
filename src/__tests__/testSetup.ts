@@ -13,10 +13,51 @@ prismaMock.artisan = {
   delete: jest.fn()
 };
 
-// Mock the Prisma client
+// Mock the Prisma client with enums
 jest.mock('@prisma/client', () => ({
   PrismaClient: jest.fn(() => prismaMock),
   prisma: prismaMock,
+  // Include the enums
+  UserRole: {
+    CUSTOMER: 'CUSTOMER',
+    ARTISAN: 'ARTISAN',
+    ADMIN: 'ADMIN'
+  },
+  AuthProvider: {
+    EMAIL: 'EMAIL',
+    PHONE: 'PHONE',
+    OAUTH_GOOGLE: 'OAUTH_GOOGLE'
+  },
+  OTPType: {
+    SIGNUP: 'SIGNUP',
+    LOGIN: 'LOGIN',
+    VERIFICATION: 'VERIFICATION',
+    PROFILE_SWITCH: 'PROFILE_SWITCH'
+  },
+  ProfileType: {
+    PERSONAL: 'PERSONAL',
+    BUSINESS: 'BUSINESS',
+    FREELANCE: 'FREELANCE',
+    CORPORATE: 'CORPORATE'
+  },
+  ProfileStatus: {
+    ACTIVE: 'ACTIVE',
+    INACTIVE: 'INACTIVE',
+    SUSPENDED: 'SUSPENDED',
+    PENDING_VERIFICATION: 'PENDING_VERIFICATION'
+  },
+  ProfileSessionStatus: {
+    ACTIVE: 'ACTIVE',
+    EXPIRED: 'EXPIRED',
+    REVOKED: 'REVOKED'
+  },
+  JobStatus: {
+    PENDING: 'PENDING',
+    ASSIGNED: 'ASSIGNED',
+    IN_PROGRESS: 'IN_PROGRESS',
+    COMPLETED: 'COMPLETED',
+    CANCELLED: 'CANCELLED'
+  }
 }));
 
 // Reset all mocks before each test

@@ -1,7 +1,18 @@
-import { PrismaClient, UserRole, AuthProvider } from '../src/generated/prisma';
+import prisma from '../src/lib/prisma';
 import bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient();
+// Define enums locally to avoid import issues
+enum UserRole {
+  CUSTOMER = 'CUSTOMER',
+  ARTISAN = 'ARTISAN',
+  ADMIN = 'ADMIN'
+}
+
+enum AuthProvider {
+  EMAIL = 'EMAIL',
+  PHONE = 'PHONE',
+  OAUTH_GOOGLE = 'OAUTH_GOOGLE'
+}
 
 async function main() {
   console.log('🌱 Starting database seeding...');

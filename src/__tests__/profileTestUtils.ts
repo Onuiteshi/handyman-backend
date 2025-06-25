@@ -1,4 +1,4 @@
-import { PrismaClient, ProfileType, UserRole } from '../generated/prisma';
+import { PrismaClient, ProfileType, UserRole } from '@prisma/client';
 import { generateToken, generateProfileToken, generateRefreshToken } from '../utils/auth.utils';
 
 const prisma = new PrismaClient();

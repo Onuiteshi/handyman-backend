@@ -1,9 +1,11 @@
 # Handyman Backend API
 
-A comprehensive backend service for a handyman platform that connects customers with skilled artisans. This RESTful API handles user and artisan authentication, profile management, service categories, and location-based artisan discovery.
+A comprehensive backend service for a handyman platform that connects customers with skilled artisans. This RESTful API handles user and artisan authentication, profile management, service categories, location-based artisan discovery, and advanced job management with smart matching.
 
 ## 📚 Documentation
 
+- **[Job Management Guide](JOB_MANAGEMENT_GUIDE.md)** - Comprehensive guide for service request flow, smart artisan matching, and cost estimation
+- **[Firebase Setup Guide](FIREBASE_SETUP_GUIDE.md)** - Complete Firebase Cloud Messaging configuration for push notifications
 - **[Profile Switching Guide](PROFILE_SWITCHING_GUIDE.md)** - Comprehensive guide for the multi-profile switching feature
 - **[Authentication Refactor](AUTHENTICATION_REFACTOR.md)** - Detailed documentation of the authentication system architecture
 
@@ -27,19 +29,27 @@ A comprehensive backend service for a handyman platform that connects customers 
 ### Artisan Management
 - Artisan registration with OTP verification
 - Detailed artisan profiles with skills and portfolio
-- Service category management
+- Service category management with specialization levels
 - Online status and location tracking
-- Experience and bio information
+- Experience, bio, and rating information
+- Service radius configuration
 
 ### Service Management
 - Service category CRUD operations (Admin only)
-- Artisan-service category associations
+- Artisan-service category associations with specialization levels
 - Search and filter artisans by service category
+
+### Job Management System
+- **Service Request Flow**: Complete job creation and management
+- **Smart Artisan Matching**: Advanced algorithm combining distance, rating, and specialization
+- **Cost Estimation**: AI-ready framework for service pricing
+- **Push Notifications**: Real-time notifications via Firebase Cloud Messaging
+- **Analytics & Monitoring**: Comprehensive matching and performance analytics
 
 ### Location Services
 - Real-time artisan location tracking
-- Distance-based artisan discovery
-- Last seen status
+- Distance-based artisan discovery using Haversine formula
+- Last seen status and service radius management
 
 ## 🛠️ Technology Stack
 
@@ -50,6 +60,8 @@ A comprehensive backend service for a handyman platform that connects customers 
 - **Authentication**: JWT with OTP
 - **Validation**: express-validator
 - **Testing**: Jest
+- **Push Notifications**: Firebase Cloud Messaging
+- **Geolocation**: Haversine formula for distance calculations
 - **Containerization**: Docker (optional)
 
 ## Prerequisites
@@ -57,6 +69,7 @@ A comprehensive backend service for a handyman platform that connects customers 
 - Node.js (v20 or higher)
 - PostgreSQL (v12 or higher)
 - npm or yarn
+- Firebase project (for push notifications)
 
 ## Setup
 
@@ -78,6 +91,11 @@ JWT_SECRET="your-super-secret-jwt-key-change-this-in-production"
 JWT_REFRESH_SECRET="your-super-secret-refresh-key-change-this-in-production"
 PORT=8000
 NODE_ENV=development
+
+# Firebase Configuration (see Firebase Setup Guide)
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYour private key here\n-----END PRIVATE KEY-----\n"
+FIREBASE_CLIENT_EMAIL=your-service-account-email
 ```
 
 4. Create the database:
@@ -118,6 +136,18 @@ npm run dev
 - POST `/api/auth/admin/login` - Admin login (password-based only)
 - POST `/api/auth/refresh` - Refresh access token
 - POST `/api/auth/logout` - Logout and invalidate token
+
+### Job Management
+- POST `/api/jobs` - Create a new job request
+- GET `/api/jobs/my-jobs` - Get current user's jobs
+- GET `/api/jobs/:jobId` - Get specific job details
+- PUT `/api/jobs/:jobId/status` - Update job status
+- GET `/api/jobs/:jobId/matches` - Get matching artisans for a job
+- GET `/api/estimate` - Get cost estimate for a service
+- GET `/api/jobs` - Get all jobs (admin only)
+- POST `/api/jobs/:jobId/assign` - Assign artisan to job (admin only)
+- GET `/api/jobs/:jobId/logs` - Get matching logs (admin only)
+- GET `/api/jobs/analytics/matching` - Get matching analytics (admin only)
 
 ### Profile Management
 - POST `/api/profiles/create` - Create a new profile
@@ -172,7 +202,7 @@ npm run dev
 
 ## 🗃️ Database Design
 
-The database is designed with a unified authentication system and role-based profiles:
+The database is designed with a unified authentication system, role-based profiles, and comprehensive job management:
 
 ### Core Models
 
@@ -197,97 +227,148 @@ The database is designed with a unified authentication system and role-based pro
 #### 4. Artisan
 - Extends user functionality with artisan-specific fields
 - Stores professional information (experience, bio, skills, portfolio)
-- Tracks online status, location, and verification status
-- Has a many-to-many relationship with ServiceCategory
-- One-to-one relationship with User
+- Tracks online status, location, verification status, and ratings
+- Service radius and specialization levels
 
-#### 5. ServiceCategory
-- Defines different service types (e.g., Plumbing, Electrical, Carpentry)
-- Has a many-to-many relationship with Artisan
-- Managed by admin users only
+#### 5. Job Management
+- **Jobs**: Service requests with location, photos, and status tracking
+- **JobMatchingLog**: Analytics data for matching algorithm optimization
+- **ArtisanServiceCategory**: Enhanced with specialization levels (1-5)
 
-#### 6. ArtisanServiceCategory (Junction Table)
-- Manages the many-to-many relationship between Artisan and ServiceCategory
-- Tracks when categories were added to artisans
+### Job Status Flow
 
-#### 7. OTP
-- Manages OTP generation, storage, and verification
-- Supports different OTP types (SIGNUP, LOGIN, VERIFICATION, PROFILE_SWITCH)
-- Includes expiration and usage tracking
-
-### Key Relationships
-- One-to-One: User ↔ Customer
-- One-to-One: User ↔ Artisan
-- One-to-Many: User ↔ Profile (owned profiles)
-- Many-to-Many: User ↔ Profile (through ProfileMember)
-- Many-to-Many: Artisan ↔ ServiceCategory (through ArtisanServiceCategory)
-- One-to-Many: User ↔ OTP
-
-### Authentication Flow
-
-#### OTP-based Authentication
-1. **Signup**: User provides identifier (email/phone) → OTP sent → User verifies OTP → Account created
-2. **Login**: User provides identifier → OTP sent → User verifies OTP → JWT tokens issued
-3. **Admin Login**: Admin provides email/password → JWT tokens issued
-
-#### Profile Switching Authentication
-1. **Profile Switch**: User requests profile switch → Check if authentication required → Send OTP if needed
-2. **Profile Authentication**: User provides OTP → Verify OTP → Create profile session → Issue profile tokens
-
-#### OAuth Authentication
-1. **Google OAuth**: User provides Google token → Account created/authenticated → JWT tokens issued
-
-## Security Features
-
-- **OTP-based authentication** for customers and artisans (6-digit codes)
-- **Password-based authentication** for admin users only (hashed with bcrypt)
-- **Google OAuth integration** for social login
-- JWT tokens for session management with refresh token support
-- **Profile-specific authentication** with separate sessions
-- Input validation using express-validator
-- Role-based access control (RBAC)
-- CORS enabled
-- Environment variables for sensitive data
-- Token expiration and validation
-- Secure HTTP headers
-- OTP expiration and rate limiting
-- Profile permission system
-
-## Error Handling
-
-The API uses a consistent error response format:
-```json
-{
-  "error": {
-    "message": "Error message",
-    "status": 400,
-    "details": []
-  }
-}
+```
+PENDING → ASSIGNED → IN_PROGRESS → COMPLETED
+    ↓         ↓           ↓
+CANCELLED  CANCELLED   CANCELLED
+    ↓
+EXPIRED
 ```
 
-## Testing
+### Smart Matching Algorithm
 
-The project includes comprehensive test coverage:
-- Unit tests for services and utilities
-- Integration tests for API endpoints
-- Authentication flow testing
-- Database operation testing
-- Profile switching functionality testing
+The system uses a sophisticated scoring algorithm:
 
-Run tests with:
+```
+Match Score = Distance Score + Rating Score + Specialization Score + Online Bonus
+```
+
+Where:
+- **Distance Score**: `Math.max(0, 5 - distanceKm)`
+- **Rating Score**: `rating * 2`
+- **Specialization Score**: `specializationLevel`
+- **Online Bonus**: `2` if online, `0` if offline
+
+## 🔧 Configuration
+
+### Firebase Setup
+
+For push notifications, follow the [Firebase Setup Guide](FIREBASE_SETUP_GUIDE.md) to:
+
+1. Create a Firebase project
+2. Generate service account credentials
+3. Configure environment variables
+4. Set up mobile app integration
+
+### Environment Variables
+
+```env
+# Database
+DATABASE_URL="postgresql://user:password@localhost:5432/handyman_db"
+
+# JWT
+JWT_SECRET=your-jwt-secret
+JWT_REFRESH_SECRET=your-refresh-secret
+
+# Firebase (see Firebase Setup Guide)
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com
+
+# Server
+PORT=8000
+NODE_ENV=development
+```
+
+## 🧪 Testing
+
+The project includes comprehensive tests for all features:
+
 ```bash
+# Run all tests
 npm test
+
+# Run specific test suites
+npm test -- --testNamePattern="Job Management"
+npm test -- --testNamePattern="Authentication"
+npm test -- --testNamePattern="Profile"
+
+# Run with coverage
+npm run test:coverage
 ```
 
-## Contributing
+## 📊 Monitoring & Analytics
+
+### Job Management Analytics
+
+- **Matching Performance**: Track selection rates and match scores
+- **Response Times**: Monitor notification delivery and artisan response
+- **Completion Rates**: Measure job success rates
+- **Customer Satisfaction**: Track ratings and feedback
+
+### System Health
+
+- **Database Performance**: Monitor query performance and connection health
+- **API Response Times**: Track endpoint performance
+- **Error Rates**: Monitor system errors and failures
+- **Notification Delivery**: Track FCM success rates
+
+## 🚀 Deployment
+
+### Production Considerations
+
+1. **Environment Variables**: Use secure environment variables in production
+2. **Database**: Use managed PostgreSQL service
+3. **Firebase**: Configure production Firebase project
+4. **SSL/TLS**: Enable HTTPS for all communications
+5. **Rate Limiting**: Implement API rate limiting
+6. **Monitoring**: Set up application monitoring and logging
+
+### Docker Deployment
+
+```bash
+# Build image
+docker build -t handyman-backend .
+
+# Run container
+docker run -p 8000:8000 --env-file .env handyman-backend
+```
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all tests pass
+6. Submit a pull request
 
-## License
+## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the ISC License.
+
+## 📞 Support
+
+For support and questions:
+
+1. Check the documentation guides
+2. Review the API endpoints
+3. Run the test suite
+4. Check the console logs for debugging
+
+## 🔗 Related Links
+
+- [Job Management Guide](JOB_MANAGEMENT_GUIDE.md) - Complete job system documentation
+- [Firebase Setup Guide](FIREBASE_SETUP_GUIDE.md) - Push notification configuration
+- [Profile Switching Guide](PROFILE_SWITCHING_GUIDE.md) - Multi-profile management
+- [Authentication Refactor](AUTHENTICATION_REFACTOR.md) - Auth system details

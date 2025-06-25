@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, AuthProvider } from '../generated/prisma';
+import { PrismaClient, UserRole, AuthProvider } from '@prisma/client';
 import { GoogleUserInfo } from '../types/auth.types';
 
 const prisma = new PrismaClient();

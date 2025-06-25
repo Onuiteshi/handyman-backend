@@ -1,6 +1,12 @@
-import { PrismaClient, OTPType } from '../generated/prisma';
+import prisma from '../lib/prisma';
 
-const prisma = new PrismaClient();
+// Define OTPType enum locally to avoid import issues
+enum OTPType {
+  SIGNUP = 'SIGNUP',
+  LOGIN = 'LOGIN',
+  VERIFICATION = 'VERIFICATION',
+  PROFILE_SWITCH = 'PROFILE_SWITCH'
+}
 
 export class OTPService {
   private static instance: OTPService;

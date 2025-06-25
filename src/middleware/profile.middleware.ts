@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
-import { PrismaClient, ProfileSessionStatus } from '../generated/prisma';
+import { PrismaClient, ProfileSessionStatus } from '@prisma/client';
 import { ProfileTokenPayload } from '../types/profile.types';
 
 const prisma = new PrismaClient();
