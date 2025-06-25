@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
-import { UserRole, AuthProvider, OTPType } from '../generated/prisma';
+import { UserRole, AuthProvider, OTPType } from '@prisma/client';
 import authService from '../services/auth.service';
 import { 
   SignupRequest, 

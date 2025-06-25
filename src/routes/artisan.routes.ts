@@ -1,6 +1,6 @@
 import { Router, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
-import { prisma } from '../index';
+import prisma from '../lib/prisma';
 import { authMiddleware, isArtisan } from '../middleware/auth.middleware';
 import { AuthRequest } from '../middleware/auth.middleware';
 
@@ -85,7 +85,7 @@ router.get('/profile', authMiddleware, isArtisan, async (req: AuthRequest, res: 
           isPhoneVerified: artisan.user.isPhoneVerified,
           profileComplete: artisan.user.profileComplete
         },
-        categories: artisan.categories.map(ac => ac.category)
+        categories: artisan.categories.map((ac: any) => ac.category)
       }
     });
   } catch (error) {
@@ -164,7 +164,7 @@ router.put('/profile', [authMiddleware, isArtisan, ...validateProfileUpdate, han
           isPhoneVerified: updatedUser.isPhoneVerified,
           profileComplete: updatedUser.profileComplete
         },
-        categories: updatedArtisan.categories.map(ac => ac.category)
+        categories: updatedArtisan.categories.map((ac: any) => ac.category)
       }
     });
   } catch (error) {
@@ -220,7 +220,7 @@ router.post('/categories', [authMiddleware, isArtisan, ...validateServiceCategor
       message: 'Categories added successfully',
       artisan: {
         id: updatedArtisan!.id,
-        categories: updatedArtisan!.categories.map(ac => ac.category)
+        categories: updatedArtisan!.categories.map((ac: any) => ac.category)
       }
     });
   } catch (error) {

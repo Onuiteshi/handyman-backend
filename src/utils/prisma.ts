@@ -1,4 +1,4 @@
-import { PrismaClient } from '../generated/prisma'; // Update import path to use generated client
+import { PrismaClient } from '@prisma/client';
 
 // Create a singleton instance of PrismaClient
 const prisma = new PrismaClient();

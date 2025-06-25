@@ -1,5 +1,5 @@
 import { Response, NextFunction } from 'express';
-import { prisma } from '../index';
+import prisma from '../lib/prisma';
 import { AuthRequest } from '../middleware/auth.middleware';
 
 // Type for category data
@@ -84,7 +84,7 @@ export const getArtisansByCategory = async (req: AuthRequest, res: Response, nex
       }
     });
 
-    const formattedArtisans = artisans.map(ac => ({
+    const formattedArtisans = artisans.map((ac: any) => ({
       id: ac.artisan.id,
       userId: ac.artisan.userId,
       skills: ac.artisan.skills,
@@ -143,7 +143,7 @@ export const getCategoryById = async (req: AuthRequest, res: Response, next: Nex
       return;
     }
 
-    const formattedArtisans = category.artisans.map(ac => ({
+    const formattedArtisans = category.artisans.map((ac: any) => ({
       id: ac.artisan.id,
       userId: ac.artisan.userId,
       skills: ac.artisan.skills,

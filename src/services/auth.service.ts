@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, AuthProvider, OTPType } from '../generated/prisma';
+import { PrismaClient, UserRole, AuthProvider, OTPType } from '@prisma/client';
 import { hashPassword, comparePassword, generateToken } from '../utils/auth.utils';
 import otpService from './otp.service';
 import oauthService from './oauth.service';

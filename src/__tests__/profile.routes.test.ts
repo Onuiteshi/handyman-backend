@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { app } from '../index';
-import { PrismaClient, ProfileType, UserRole } from '../generated/prisma';
+import { PrismaClient, ProfileType, UserRole } from '@prisma/client';
 import { generateToken } from '../utils/auth.utils';
 
 const prisma = new PrismaClient();
