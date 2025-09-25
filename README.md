@@ -4,10 +4,10 @@ A comprehensive backend service for a handyman platform that connects customers 
 
 ## 📚 Documentation
 
-- **[Job Management Guide](JOB_MANAGEMENT_GUIDE.md)** - Comprehensive guide for service request flow, smart artisan matching, and cost estimation
-- **[Firebase Setup Guide](FIREBASE_SETUP_GUIDE.md)** - Complete Firebase Cloud Messaging configuration for push notifications
-- **[Profile Switching Guide](PROFILE_SWITCHING_GUIDE.md)** - Comprehensive guide for the multi-profile switching feature
-- **[Authentication Refactor](AUTHENTICATION_REFACTOR.md)** - Detailed documentation of the authentication system architecture
+- **[Job Management Guide](docs/JOB_MANAGEMENT_GUIDE.md)** - Comprehensive guide for service request flow, smart artisan matching, and cost estimation
+- **[Firebase Setup Guide](docs/FIREBASE_SETUP_GUIDE.md)** - Complete Firebase Cloud Messaging configuration for push notifications
+- **[Profile Switching Guide](docs/PROFILE_SWITCHING_GUIDE.md)** - Comprehensive guide for the multi-profile switching feature
+- **[Authentication Refactor](docs/AUTHENTICATION_REFACTOR.md)** - Detailed documentation of the authentication system architecture
 
 ## 🚀 Key Features
 
@@ -263,7 +263,7 @@ Where:
 
 ### Firebase Setup
 
-For push notifications, follow the [Firebase Setup Guide](FIREBASE_SETUP_GUIDE.md) to:
+For push notifications, follow the [Firebase Setup Guide](docs/FIREBASE_SETUP_GUIDE.md) to:
 
 1. Create a Firebase project
 2. Generate service account credentials
@@ -368,7 +368,7 @@ For support and questions:
 
 ## 🔗 Related Links
 
-- [Job Management Guide](JOB_MANAGEMENT_GUIDE.md) - Complete job system documentation
-- [Firebase Setup Guide](FIREBASE_SETUP_GUIDE.md) - Push notification configuration
-- [Profile Switching Guide](PROFILE_SWITCHING_GUIDE.md) - Multi-profile management
-- [Authentication Refactor](AUTHENTICATION_REFACTOR.md) - Auth system details
+- [Job Management Guide](docs/JOB_MANAGEMENT_GUIDE.md) - Complete job system documentation
+- [Firebase Setup Guide](docs/FIREBASE_SETUP_GUIDE.md) - Push notification configuration
+- [Profile Switching Guide](docs/PROFILE_SWITCHING_GUIDE.md) - Multi-profile management
+- [Authentication Refactor](docs/AUTHENTICATION_REFACTOR.md) - Auth system details

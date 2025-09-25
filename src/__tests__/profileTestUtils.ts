@@ -1,5 +1,14 @@
-import { PrismaClient, ProfileType, UserRole } from '@prisma/client';
+const { PrismaClient } = require('@prisma/client');
 import { generateToken, generateProfileToken, generateRefreshToken } from '../utils/auth.utils';
+import { UserRole, AuthProvider } from '../types/auth.types';
+
+// Define ProfileType locally to avoid import issues
+enum ProfileType {
+  PERSONAL = 'PERSONAL',
+  BUSINESS = 'BUSINESS',
+  FREELANCE = 'FREELANCE',
+  CORPORATE = 'CORPORATE'
+}
 
 const prisma = new PrismaClient();
 
@@ -45,7 +54,7 @@ export class ProfileTestUtils {
         email,
         name,
         role,
-        authProvider: 'EMAIL',
+        authProvider: AuthProvider.EMAIL,
         isEmailVerified: true,
         isPhoneVerified: false,
         profileComplete: true,
@@ -56,7 +65,7 @@ export class ProfileTestUtils {
     const token = generateToken({
       id: user.id,
       role,
-      authProvider: 'EMAIL',
+      authProvider: AuthProvider.EMAIL,
       isEmailVerified: true,
       isPhoneVerified: false,
       profileComplete: true

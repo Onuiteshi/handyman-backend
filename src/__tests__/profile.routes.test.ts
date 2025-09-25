@@ -1,7 +1,16 @@
 import request from 'supertest';
 import { app } from '../index';
-import { PrismaClient, ProfileType, UserRole } from '@prisma/client';
+const { PrismaClient } = require('@prisma/client');
 import { generateToken } from '../utils/auth.utils';
+import { UserRole, AuthProvider } from '../types/auth.types';
+
+// Define ProfileType locally to avoid import issues
+enum ProfileType {
+  PERSONAL = 'PERSONAL',
+  BUSINESS = 'BUSINESS',
+  FREELANCE = 'FREELANCE',
+  CORPORATE = 'CORPORATE'
+}
 
 const prisma = new PrismaClient();
 
@@ -19,7 +28,7 @@ describe('Profile Routes', () => {
         email: 'testuser@example.com',
         name: 'Test User',
         role: UserRole.CUSTOMER,
-        authProvider: 'EMAIL',
+        authProvider: AuthProvider.EMAIL,
         isEmailVerified: true,
         isPhoneVerified: false,
         profileComplete: true
@@ -33,7 +42,7 @@ describe('Profile Routes', () => {
         email: 'testartisan@example.com',
         name: 'Test Artisan',
         role: UserRole.ARTISAN,
-        authProvider: 'EMAIL',
+        authProvider: AuthProvider.EMAIL,
         isEmailVerified: true,
         isPhoneVerified: false,
         profileComplete: true
@@ -46,7 +55,7 @@ describe('Profile Routes', () => {
         email: 'admin@test.com',
         name: 'Admin User',
         role: UserRole.ADMIN,
-        authProvider: 'EMAIL',
+        authProvider: AuthProvider.EMAIL,
         isEmailVerified: true,
         isPhoneVerified: false,
         profileComplete: true,
@@ -58,7 +67,7 @@ describe('Profile Routes', () => {
     customerToken = generateToken({
       id: testUser.id,
       role: UserRole.CUSTOMER,
-      authProvider: 'EMAIL',
+      authProvider: AuthProvider.EMAIL,
       isEmailVerified: true,
       isPhoneVerified: false,
       profileComplete: true
@@ -67,7 +76,7 @@ describe('Profile Routes', () => {
     artisanToken = generateToken({
       id: testArtisan.id,
       role: UserRole.ARTISAN,
-      authProvider: 'EMAIL',
+      authProvider: AuthProvider.EMAIL,
       isEmailVerified: true,
       isPhoneVerified: false,
       profileComplete: true
@@ -76,7 +85,7 @@ describe('Profile Routes', () => {
     adminToken = generateToken({
       id: adminUser.id,
       role: UserRole.ADMIN,
-      authProvider: 'EMAIL',
+      authProvider: AuthProvider.EMAIL,
       isEmailVerified: true,
       isPhoneVerified: false,
       profileComplete: true

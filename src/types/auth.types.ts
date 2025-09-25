@@ -1,4 +1,4 @@
-import { UserRole, AuthProvider, OTPType } from '@prisma/client';
+// Removed import from @prisma/client to avoid enum conflicts
 
 // Base User interface
 export interface User {
@@ -198,4 +198,24 @@ export interface AuthService {
   adminLogin(data: AdminLoginRequest): Promise<AuthResponse>;
   refreshToken(token: string): Promise<AuthResponse>;
   logout(token: string): Promise<void>;
+}
+
+export enum UserRole {
+  CUSTOMER = 'CUSTOMER',
+  ARTISAN = 'ARTISAN',
+  ADMIN = 'ADMIN',
+}
+
+export enum AuthProvider {
+  EMAIL = 'EMAIL',
+  PHONE = 'PHONE',
+  OAUTH_GOOGLE = 'OAUTH_GOOGLE',
+}
+
+export enum OTPType {
+  SIGNUP = 'SIGNUP',
+  LOGIN = 'LOGIN',
+  PASSWORD_RESET = 'PASSWORD_RESET',
+  PROFILE_SWITCH = 'PROFILE_SWITCH',
+  VERIFICATION = 'VERIFICATION',
 } 

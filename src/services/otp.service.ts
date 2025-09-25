@@ -1,12 +1,5 @@
 import prisma from '../lib/prisma';
-
-// Define OTPType enum locally to avoid import issues
-enum OTPType {
-  SIGNUP = 'SIGNUP',
-  LOGIN = 'LOGIN',
-  VERIFICATION = 'VERIFICATION',
-  PROFILE_SWITCH = 'PROFILE_SWITCH'
-}
+import { OTPType } from '../types/auth.types';
 
 export class OTPService {
   private static instance: OTPService;

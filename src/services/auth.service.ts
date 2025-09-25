@@ -1,4 +1,5 @@
-import { PrismaClient, UserRole, AuthProvider, OTPType } from '@prisma/client';
+// Use require for PrismaClient import for compatibility
+const { PrismaClient } = require('@prisma/client');
 import { hashPassword, comparePassword, generateToken } from '../utils/auth.utils';
 import otpService from './otp.service';
 import oauthService from './oauth.service';
@@ -13,6 +14,7 @@ import {
   TokenPayload,
   User
 } from '../types/auth.types';
+import { UserRole, AuthProvider, OTPType } from '../types/auth.types';
 
 const prisma = new PrismaClient();
 
