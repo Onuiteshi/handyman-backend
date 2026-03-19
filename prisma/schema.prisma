@@ -57,13 +57,18 @@ model User {
   id                String       @id @default(uuid())
   email             String?      @unique
   phone             String?      @unique
-  name              String
+  name              String?      // Optional - can be filled later
   dateOfBirth       DateTime?
   role              UserRole     @default(CUSTOMER)
   authProvider      AuthProvider @default(EMAIL)
   isEmailVerified   Boolean      @default(false)
   isPhoneVerified   Boolean      @default(false)
   profileComplete   Boolean      @default(false)
+  
+  // Location fields
+  address           String?      // Full address string
+  latitude          Float?       // Latitude coordinate
+  longitude         Float?      // Longitude coordinate
   
   // OAuth fields
   googleId          String?      @unique

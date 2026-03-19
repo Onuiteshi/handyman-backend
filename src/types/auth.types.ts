@@ -5,13 +5,16 @@ export interface User {
   id: string;
   email?: string;
   phone?: string;
-  name: string;
+  name?: string; // Optional - can be filled during profile completion
   dateOfBirth?: Date;
   role: UserRole;
   authProvider: AuthProvider;
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
   profileComplete: boolean;
+  address?: string; // Full address string
+  latitude?: number; // Latitude coordinate
+  longitude?: number; // Longitude coordinate
   googleId?: string;
   avatar?: string;
   password?: string; // Only for admin users
@@ -66,11 +69,8 @@ export interface OTPVerification {
 
 // Authentication request interfaces
 export interface SignupRequest {
-  identifier: string; // email or phone
-  name: string;
-  dateOfBirth?: string;
+  identifier: string; // phone number only for signup
   role?: UserRole;
-  authProvider?: AuthProvider;
 }
 
 export interface LoginRequest {
@@ -106,6 +106,15 @@ export interface ArtisanProfileRequest {
   experience: number;
   portfolio?: string[];
   bio?: string;
+}
+
+// Profile completion request (after OTP verification or Google OAuth)
+export interface CompleteProfileRequest {
+  name: string;
+  email?: string; // Optional for phone signup, required for Google OAuth
+  address?: string; // Full address string
+  latitude?: number; // Latitude coordinate
+  longitude?: number; // Longitude coordinate
 }
 
 // JWT Token payload

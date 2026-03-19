@@ -97,16 +97,16 @@ export class OAuthService {
         }
       }
 
-      // Create new user
+      // Create new user (name from Google, but profile not complete until address is provided)
       const userData: any = {
-        name: googleUserInfo.name,
+        name: googleUserInfo.name || 'User', // Use Google name or default
         email: googleUserInfo.email,
         googleId: googleUserInfo.id,
         avatar: googleUserInfo.picture,
         authProvider: AuthProvider.OAUTH_GOOGLE,
         role,
         isEmailVerified: true,
-        profileComplete: false
+        profileComplete: false // Will be set to true after address/location is provided
       };
 
       user = await prisma.user.create({

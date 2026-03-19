@@ -7,8 +7,10 @@ import {
   LoginRequest, 
   OTPVerificationRequest, 
   OAuthGoogleRequest, 
-  AdminLoginRequest
+  AdminLoginRequest,
+  CompleteProfileRequest
 } from '../types/auth.types';
+import { authMiddleware } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -16,32 +18,18 @@ const router = Router();
 const validateSignup = [
   body('identifier')
     .notEmpty()
-    .withMessage('Email or phone number is required')
+    .withMessage('Phone number is required')
     .custom((value) => {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
-      if (!emailRegex.test(value) && !phoneRegex.test(value)) {
-        throw new Error('Please provide a valid email or phone number');
+      if (!phoneRegex.test(value) || value.length < 10) {
+        throw new Error('Please provide a valid phone number');
       }
       return true;
     }),
-  body('name')
-    .notEmpty()
-    .withMessage('Name is required')
-    .isLength({ min: 2 })
-    .withMessage('Name must be at least 2 characters long'),
-  body('dateOfBirth')
-    .optional()
-    .isISO8601()
-    .withMessage('Date of birth must be a valid date'),
   body('role')
     .optional()
     .isIn([UserRole.CUSTOMER, UserRole.ARTISAN])
-    .withMessage('Role must be either CUSTOMER or ARTISAN'),
-  body('authProvider')
-    .optional()
-    .isIn([AuthProvider.EMAIL, AuthProvider.PHONE])
-    .withMessage('Auth provider must be either EMAIL or PHONE')
+    .withMessage('Role must be either CUSTOMER or ARTISAN')
 ];
 
 const validateLogin = [
@@ -70,18 +58,42 @@ const validateOAuthGoogle = [
   body('googleToken')
     .notEmpty()
     .withMessage('Google token is required'),
-  body('name')
-    .optional()
-    .notEmpty()
-    .withMessage('Name cannot be empty'),
-  body('dateOfBirth')
-    .optional()
-    .isISO8601()
-    .withMessage('Date of birth must be a valid date'),
   body('role')
     .optional()
     .isIn([UserRole.CUSTOMER, UserRole.ARTISAN])
     .withMessage('Role must be either CUSTOMER or ARTISAN')
+];
+
+const validateCompleteProfile = [
+  body('name')
+    .notEmpty()
+    .withMessage('Name is required')
+    .isLength({ min: 2 })
+    .withMessage('Name must be at least 2 characters long'),
+  body('email')
+    .optional()
+    .isEmail()
+    .withMessage('Please provide a valid email'),
+  body('address')
+    .optional()
+    .notEmpty()
+    .withMessage('Address cannot be empty if provided'),
+  body('latitude')
+    .optional()
+    .isFloat({ min: -90, max: 90 })
+    .withMessage('Latitude must be between -90 and 90'),
+  body('longitude')
+    .optional()
+    .isFloat({ min: -180, max: 180 })
+    .withMessage('Longitude must be between -180 and 180'),
+  body()
+    .custom((value) => {
+      // Either address or (latitude and longitude) must be provided
+      if (!value.address && (!value.latitude || !value.longitude)) {
+        throw new Error('Either address or both latitude and longitude must be provided');
+      }
+      return true;
+    })
 ];
 
 const validateAdminLogin = [
@@ -253,6 +265,33 @@ router.post('/logout', async (req: Request, res: Response, next: NextFunction) =
     }
     await authService.logout(token);
     res.status(200).json({ message: 'Logged out successfully' });
+  } catch (error: any) {
+    res.status(400).json({ 
+      error: {
+        message: error.message,
+        status: 400
+      }
+    });
+  }
+});
+
+// Complete profile (after OTP verification or Google OAuth)
+router.post('/complete-profile', [authMiddleware, ...validateCompleteProfile, handleValidationErrors], async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user?.id;
+    if (!userId) {
+      res.status(401).json({ 
+        error: {
+          message: 'Authentication required',
+          status: 401
+        }
+      });
+      return;
+    }
+
+    const profileData: CompleteProfileRequest = req.body;
+    const result = await authService.completeProfile(userId, profileData);
+    res.status(200).json(result);
   } catch (error: any) {
     res.status(400).json({ 
       error: {

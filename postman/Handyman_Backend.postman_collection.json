@@ -10,7 +10,7 @@
       "description": "OTP-based authentication endpoints for users and artisans, plus OAuth and admin login",
       "item": [
         {
-          "name": "User Signup",
+          "name": "User Signup (Phone)",
           "request": {
             "method": "POST",
             "header": [
@@ -21,7 +21,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"identifier\": \"user@example.com\",\n  \"name\": \"John Doe\",\n  \"dateOfBirth\": \"1990-01-01\",\n  \"role\": \"CUSTOMER\",\n  \"authProvider\": \"EMAIL\"\n}",
+              "raw": "{\n  \"identifier\": \"+2348012345678\",\n  \"role\": \"CUSTOMER\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -33,7 +33,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "auth", "signup"]
             },
-            "description": "Initiate user signup process - sends OTP to email/phone"
+            "description": "Initiate user signup process - sends SMS OTP to phone number. Only phone number is required at this stage."
           }
         },
         {
@@ -48,7 +48,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"identifier\": \"user@example.com\",\n  \"otp\": \"123456\",\n  \"type\": \"SIGNUP\"\n}",
+              "raw": "{\n  \"identifier\": \"+2348012345678\",\n  \"otp\": \"123456\",\n  \"type\": \"SIGNUP\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -60,11 +60,42 @@
               "host": ["{{base_url}}"],
               "path": ["api", "auth", "verify-signup"]
             },
-            "description": "Verify OTP and complete user signup"
+            "description": "Verify OTP and get authentication token. Returns token with requiresProfileCompletion flag if profile needs to be completed."
           }
         },
         {
-          "name": "User Login",
+          "name": "Complete Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customer_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"address\": \"2 Surulere drive, Lagos\",\n  \"latitude\": 6.5244,\n  \"longitude\": 3.3792\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/complete-profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "complete-profile"]
+            },
+            "description": "Complete user profile with name, email, and address/location. Either address string or both latitude and longitude must be provided."
+          }
+        },
+        {
+          "name": "User Login (Phone)",
           "request": {
             "method": "POST",
             "header": [
@@ -75,7 +106,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"identifier\": \"user@example.com\"\n}",
+              "raw": "{\n  \"identifier\": \"+2348012345678\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -87,7 +118,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "auth", "login"]
             },
-            "description": "Initiate user login process - sends OTP to email/phone"
+            "description": "Initiate user login process - sends SMS OTP to phone number"
           }
         },
         {
@@ -102,7 +133,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"identifier\": \"user@example.com\",\n  \"otp\": \"123456\",\n  \"type\": \"LOGIN\"\n}",
+              "raw": "{\n  \"identifier\": \"+2348012345678\",\n  \"otp\": \"123456\",\n  \"type\": \"LOGIN\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -118,7 +149,7 @@
           }
         },
         {
-          "name": "Artisan Signup",
+          "name": "Artisan Signup (Phone)",
           "request": {
             "method": "POST",
             "header": [
@@ -129,7 +160,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"identifier\": \"artisan@example.com\",\n  \"name\": \"Artisan Name\",\n  \"dateOfBirth\": \"1985-01-01\",\n  \"role\": \"ARTISAN\",\n  \"authProvider\": \"EMAIL\"\n}",
+              "raw": "{\n  \"identifier\": \"+2348012345679\",\n  \"role\": \"ARTISAN\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -141,7 +172,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "auth", "signup"]
             },
-            "description": "Initiate artisan signup process - sends OTP to email/phone"
+            "description": "Initiate artisan signup process - sends SMS OTP to phone number"
           }
         },
         {
@@ -156,7 +187,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"identifier\": \"artisan@example.com\",\n  \"otp\": \"123456\",\n  \"type\": \"SIGNUP\"\n}",
+              "raw": "{\n  \"identifier\": \"+2348012345679\",\n  \"otp\": \"123456\",\n  \"type\": \"SIGNUP\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -168,11 +199,11 @@
               "host": ["{{base_url}}"],
               "path": ["api", "auth", "verify-signup"]
             },
-            "description": "Verify OTP and complete artisan signup"
+            "description": "Verify OTP and get authentication token. Returns token with requiresProfileCompletion flag if profile needs to be completed."
           }
         },
         {
-          "name": "Artisan Login",
+          "name": "Artisan Login (Phone)",
           "request": {
             "method": "POST",
             "header": [
@@ -183,7 +214,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"identifier\": \"artisan@example.com\"\n}",
+              "raw": "{\n  \"identifier\": \"+2348012345679\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -195,7 +226,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "auth", "login"]
             },
-            "description": "Initiate artisan login process - sends OTP to email/phone"
+            "description": "Initiate artisan login process - sends SMS OTP to phone number"
           }
         },
         {
@@ -210,7 +241,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"identifier\": \"artisan@example.com\",\n  \"otp\": \"123456\",\n  \"type\": \"LOGIN\"\n}",
+              "raw": "{\n  \"identifier\": \"+2348012345679\",\n  \"otp\": \"123456\",\n  \"type\": \"LOGIN\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -237,7 +268,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"googleToken\": \"google_oauth_token_here\",\n  \"name\": \"User Name\",\n  \"role\": \"CUSTOMER\"\n}",
+              "raw": "{\n  \"googleToken\": \"google_oauth_token_here\",\n  \"role\": \"CUSTOMER\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -249,7 +280,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "auth", "google"]
             },
-            "description": "Google OAuth authentication"
+            "description": "Google OAuth authentication. Returns token with requiresProfileCompletion flag if address/location needs to be provided. User will be taken to fill details screen."
           }
         },
         {

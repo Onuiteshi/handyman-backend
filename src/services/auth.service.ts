@@ -9,6 +9,7 @@ import {
   OTPVerificationRequest, 
   OAuthGoogleRequest, 
   AdminLoginRequest,
+  CompleteProfileRequest,
   AuthResponse,
   OTPResponse,
   TokenPayload,
@@ -38,7 +39,7 @@ export class AuthService {
       id: prismaUser.id,
       email: prismaUser.email || undefined,
       phone: prismaUser.phone || undefined,
-      name: prismaUser.name,
+      name: prismaUser.name || undefined,
       dateOfBirth: prismaUser.dateOfBirth || undefined,
       role: prismaUser.role,
       authProvider: prismaUser.authProvider,
@@ -54,59 +55,40 @@ export class AuthService {
   }
 
   /**
-   * User signup with OTP
+   * User signup with OTP (phone number only)
    */
   public async signup(data: SignupRequest): Promise<OTPResponse> {
     try {
-      const { identifier, name, dateOfBirth, role = UserRole.CUSTOMER, authProvider } = data;
+      const { identifier, role = UserRole.CUSTOMER } = data;
 
-      // Validate identifier format
-      const isEmail = this.isEmail(identifier);
-      const isPhone = this.isPhone(identifier);
-
-      if (!isEmail && !isPhone) {
-        throw new Error('Invalid identifier format. Please provide a valid email or phone number.');
+      // Validate that identifier is a phone number
+      if (!this.isPhone(identifier)) {
+        throw new Error('Invalid phone number format. Please provide a valid phone number.');
       }
 
       // Check if user already exists
       const existingUser = await prisma.user.findFirst({
         where: {
-          OR: [
-            { email: isEmail ? identifier : undefined },
-            { phone: isPhone ? identifier : undefined }
-          ]
+          phone: identifier
         }
       });
 
       if (existingUser) {
-        throw new Error('User already exists with this email or phone number.');
+        throw new Error('User already exists with this phone number.');
       }
 
-      // Create user record (without verification)
-      const userData: any = {
-        name,
-        authProvider: authProvider || (isEmail ? AuthProvider.EMAIL : AuthProvider.PHONE),
-        role,
-        profileComplete: false
-      };
-
-      if (isEmail) {
-        userData.email = identifier;
-        userData.isEmailVerified = false;
-      } else {
-        userData.phone = identifier;
-        userData.isPhoneVerified = false;
-      }
-
-      if (dateOfBirth) {
-        userData.dateOfBirth = new Date(dateOfBirth);
-      }
-
+      // Create user record (without verification, no name yet)
       const user = await prisma.user.create({
-        data: userData
+        data: {
+          phone: identifier,
+          authProvider: AuthProvider.PHONE,
+          role,
+          isPhoneVerified: false,
+          profileComplete: false
+        }
       });
 
-      // Send OTP
+      // Send OTP via SMS
       const otpSent = await otpService.sendOTP(identifier, OTPType.SIGNUP, user.id);
 
       if (!otpSent) {
@@ -127,7 +109,7 @@ export class AuthService {
   }
 
   /**
-   * Verify OTP and complete signup
+   * Verify OTP and complete signup (returns token but requires profile completion)
    */
   public async verifyOTP(data: OTPVerificationRequest): Promise<AuthResponse> {
     try {
@@ -204,11 +186,11 @@ export class AuthService {
 
       const token = generateToken(tokenPayload);
 
-      // Check if profile completion is required
-      const requiresProfileCompletion = updatedUser.role === UserRole.ARTISAN && !updatedUser.profileComplete;
+      // Profile completion is required if name, email, or address is missing
+      const requiresProfileCompletion = !updatedUser.name || !updatedUser.email || (!updatedUser.address && (!updatedUser.latitude || !updatedUser.longitude));
 
       return {
-        message: 'Signup completed successfully',
+        message: 'OTP verified successfully. Please complete your profile.',
         token,
         user: this.convertPrismaUserToUser(updatedUser),
         requiresProfileCompletion
@@ -318,11 +300,11 @@ export class AuthService {
   }
 
   /**
-   * Google OAuth authentication
+   * Google OAuth authentication (returns token but requires profile completion)
    */
   public async oauthGoogle(data: OAuthGoogleRequest): Promise<AuthResponse> {
     try {
-      const { googleToken, name, dateOfBirth, role = UserRole.CUSTOMER } = data;
+      const { googleToken, role = UserRole.CUSTOMER } = data;
 
       // Verify Google token
       const googleUserInfo = await oauthService.verifyGoogleToken(googleToken);
@@ -346,17 +328,99 @@ export class AuthService {
 
       const token = generateToken(tokenPayload);
 
-      // Check if profile completion is required
-      const requiresProfileCompletion = user.role === UserRole.ARTISAN && !user.profileComplete;
+      // Profile completion is required if address/location is missing
+      const requiresProfileCompletion = !user.address && (!user.latitude || !user.longitude);
 
       return {
-        message: 'Google authentication successful',
+        message: 'Google authentication successful. Please complete your profile.',
         token,
         user: this.convertPrismaUserToUser(user),
         requiresProfileCompletion
       };
     } catch (error) {
       console.error('Google OAuth error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Complete user profile with name, email, and address/location
+   */
+  public async completeProfile(userId: string, data: CompleteProfileRequest): Promise<AuthResponse> {
+    try {
+      const { name, email, address, latitude, longitude } = data;
+
+      // Find user
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          customer: true,
+          artisan: true
+        }
+      });
+
+      if (!user) {
+        throw new Error('User not found.');
+      }
+
+      // Update user profile
+      const updateData: any = {
+        name,
+        profileComplete: true
+      };
+
+      // Update email if provided and not already set
+      if (email && !user.email) {
+        // Check if email is already taken
+        const existingUser = await prisma.user.findUnique({
+          where: { email }
+        });
+        if (existingUser && existingUser.id !== userId) {
+          throw new Error('Email already in use.');
+        }
+        updateData.email = email;
+        updateData.isEmailVerified = false; // Email from profile completion needs verification
+      }
+
+      // Update address/location
+      if (address) {
+        updateData.address = address;
+      }
+      if (latitude !== undefined) {
+        updateData.latitude = latitude;
+      }
+      if (longitude !== undefined) {
+        updateData.longitude = longitude;
+      }
+
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: updateData,
+        include: {
+          customer: true,
+          artisan: true
+        }
+      });
+
+      // Generate new token with updated profile status
+      const tokenPayload: TokenPayload = {
+        id: updatedUser.id,
+        role: updatedUser.role,
+        authProvider: updatedUser.authProvider,
+        isEmailVerified: updatedUser.isEmailVerified,
+        isPhoneVerified: updatedUser.isPhoneVerified,
+        profileComplete: updatedUser.profileComplete
+      };
+
+      const token = generateToken(tokenPayload);
+
+      return {
+        message: 'Profile completed successfully',
+        token,
+        user: this.convertPrismaUserToUser(updatedUser)
+      };
+    } catch (error) {
+      console.error('Profile completion error:', error);
       throw error;
     }
   }
