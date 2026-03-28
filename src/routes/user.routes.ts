@@ -9,8 +9,12 @@ const router = Router();
 // Validation middleware
 const validateProfileUpdate = [
   body('name').optional().notEmpty().withMessage('Name cannot be empty'),
+  body('email').optional().isEmail().withMessage('Please enter a valid email address'),
   body('phone').optional().isMobilePhone('any').withMessage('Please enter a valid phone number'),
   body('dateOfBirth').optional().isISO8601().withMessage('Date of birth must be a valid date'),
+  body('address').optional().notEmpty().withMessage('Address cannot be empty'),
+  body('latitude').optional().isFloat().withMessage('Latitude must be a number'),
+  body('longitude').optional().isFloat().withMessage('Longitude must be a number'),
 ];
 
 // Validation error handler
@@ -73,12 +77,21 @@ router.put('/profile', [authMiddleware, isCustomer, ...validateProfileUpdate, ha
       return;
     }
 
-    const { name, phone, dateOfBirth } = req.body;
+    const { name, email, phone, dateOfBirth, address, latitude, longitude } = req.body;
 
     const updateData: any = {};
     if (name) updateData.name = name;
+    if (email) updateData.email = email;
     if (phone) updateData.phone = phone;
     if (dateOfBirth) updateData.dateOfBirth = new Date(dateOfBirth);
+    if (address) updateData.address = address;
+    if (latitude !== undefined) updateData.latitude = latitude;
+    if (longitude !== undefined) updateData.longitude = longitude;
+
+    // Set profileComplete to true if name and address are provided
+    if (name && address) {
+      updateData.profileComplete = true;
+    }
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
@@ -100,6 +113,9 @@ router.put('/profile', [authMiddleware, isCustomer, ...validateProfileUpdate, ha
         isEmailVerified: updatedUser.isEmailVerified,
         isPhoneVerified: updatedUser.isPhoneVerified,
         profileComplete: updatedUser.profileComplete,
+        address: updatedUser.address,
+        latitude: updatedUser.latitude,
+        longitude: updatedUser.longitude,
         customer: updatedUser.customer
       }
     });

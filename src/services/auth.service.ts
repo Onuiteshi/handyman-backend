@@ -186,8 +186,9 @@ export class AuthService {
 
       const token = generateToken(tokenPayload);
 
-      // Profile completion is required if name, email, or address is missing
-      const requiresProfileCompletion = !updatedUser.name || !updatedUser.email || (!updatedUser.address && (!updatedUser.latitude || !updatedUser.longitude));
+      // Profile completion is required if name or address is missing
+      // Email is optional for phone-based auth
+      const requiresProfileCompletion = !updatedUser.name || (!updatedUser.address && (!updatedUser.latitude || !updatedUser.longitude));
 
       return {
         message: 'OTP verified successfully. Please complete your profile.',
@@ -202,14 +203,14 @@ export class AuthService {
   }
 
   /**
-   * User login with OTP
+   * User login with OTP (auto-creates user if not found)
    */
   public async login(data: LoginRequest): Promise<OTPResponse> {
     try {
       const { identifier } = data;
 
       // Find user
-      const user = await prisma.user.findFirst({
+      let user = await prisma.user.findFirst({
         where: {
           OR: [
             { email: identifier },
@@ -218,14 +219,33 @@ export class AuthService {
         }
       });
 
+      // If user doesn't exist, create them as CUSTOMER
       if (!user) {
-        throw new Error('User not found.');
+        // Validate that identifier is a phone number
+        if (!this.isPhone(identifier)) {
+          throw new Error('User not found. Please provide a valid phone number to sign up.');
+        }
+
+        // Create user record
+        user = await prisma.user.create({
+          data: {
+            phone: identifier,
+            authProvider: AuthProvider.PHONE,
+            role: UserRole.CUSTOMER,
+            isPhoneVerified: false,
+            profileComplete: false
+          }
+        });
       }
 
       // Send OTP
       const otpSent = await otpService.sendOTP(identifier, OTPType.LOGIN, user.id);
 
       if (!otpSent) {
+        // Clean up user if OTP sending fails and user was just created
+        if (!user.isPhoneVerified) {
+          await prisma.user.delete({ where: { id: user.id } }).catch(() => {});
+        }
         throw new Error('Failed to send OTP. Please try again.');
       }
 
