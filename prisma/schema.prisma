@@ -119,6 +119,7 @@ model Artisan {
   skills            String[]     // Array of skill strings
   experience        Int          // Years of experience
   portfolio         String[]     // Array of portfolio URLs
+  status            ProfileStatus @default(PENDING_VERIFICATION) // Approval workflow status
   isProfileComplete Boolean      @default(false)
   bio               String?
   photoUrl          String?

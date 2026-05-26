@@ -2,6 +2,9 @@
 import { config } from 'dotenv';
 config({ path: '.env.test' });
 
+// Mock the index module to prevent Prisma connection
+jest.mock('../index', () => ({}));
+
 // Import test setup
 import './testSetup';
 

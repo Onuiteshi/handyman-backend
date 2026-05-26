@@ -10,6 +10,7 @@ import uploadRoutes from './routes/upload.routes';
 import artisanStatusRoutes from './routes/artisanStatus.routes';
 import profileRoutes from './routes/profile.routes';
 import jobRoutes from './routes/job.routes';
+import adminRoutes from './routes/admin.routes';
 import prisma from './lib/prisma';
 
 dotenv.config();
@@ -41,6 +42,7 @@ apiRouter.use('/uploads', uploadRoutes);
 apiRouter.use('/artisan', artisanStatusRoutes);
 apiRouter.use('/profiles', profileRoutes);
 apiRouter.use('/jobs', jobRoutes);
+apiRouter.use('/admin', adminRoutes);
 
 app.use('/api', apiRouter);
 

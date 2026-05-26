@@ -138,3 +138,70 @@ export const uploadIdDocument = async (req: UploadRequest, res: Response, next: 
     next(error);
   }
 };
+
+// Registration-specific upload endpoints (before artisan profile exists)
+
+export const uploadArtisanRegistrationPhoto = async (req: UploadRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    // Validate file type (images only)
+    const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+    if (!allowedImageTypes.includes(req.file.mimetype)) {
+      // Delete the uploaded file since it's invalid
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ message: 'Invalid file type' });
+    }
+
+    // Validate file size (10MB maximum)
+    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+    if (req.file.size > maxSize) {
+      // Delete the uploaded file since it's too large
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ message: 'File size exceeds 10MB limit' });
+    }
+
+    // Return file URL
+    const fileUrl = `/uploads/${req.file.filename}`;
+    res.status(200).json({
+      message: 'Photo uploaded successfully',
+      fileUrl
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const uploadArtisanRegistrationDocument = async (req: UploadRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    // Validate file type (PDF only)
+    if (req.file.mimetype !== 'application/pdf') {
+      // Delete the uploaded file since it's invalid
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ message: 'Invalid file type' });
+    }
+
+    // Validate file size (10MB maximum)
+    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+    if (req.file.size > maxSize) {
+      // Delete the uploaded file since it's too large
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ message: 'File size exceeds 10MB limit' });
+    }
+
+    // Return file URL
+    const fileUrl = `/uploads/${req.file.filename}`;
+    res.status(200).json({
+      message: 'Document uploaded successfully',
+      fileUrl
+    });
+  } catch (error) {
+    next(error);
+  }
+};

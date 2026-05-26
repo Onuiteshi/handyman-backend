@@ -7,7 +7,39 @@ class PrismaClient {
     // Return a deep mock of all Prisma methods
     const mock = mockDeep();
     
-    // Add any default mock implementations here
+    // Add mock implementations for all models
+    mock.user = {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    };
+    
+    mock.profile = {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    };
+    
+    mock.customerProfile = {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    };
+    
+    mock.profileSession = {
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    };
+    
     mock.serviceCategory = {
       findMany: jest.fn(),
       findUnique: jest.fn(),
@@ -18,6 +50,59 @@ class PrismaClient {
     
     mock.artisan = {
       findUnique: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      deleteMany: jest.fn(),
+    };
+    
+    mock.customer = {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      deleteMany: jest.fn(),
+    };
+    
+    mock.oTPVerification = {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      deleteMany: jest.fn(),
+    };
+    
+    mock.jobMatchingLog = {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      deleteMany: jest.fn(),
+    };
+    
+    mock.profileInvitation = {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      deleteMany: jest.fn(),
+    };
+    
+    mock.profileMember = {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      deleteMany: jest.fn(),
     };
     
     mock.artisanServiceCategory = {
@@ -25,6 +110,18 @@ class PrismaClient {
       create: jest.fn(),
       delete: jest.fn(),
     };
+    
+    mock.job = {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    };
+    
+    // Add $connect and $disconnect methods
+    mock.$connect = jest.fn().mockResolvedValue(undefined);
+    mock.$disconnect = jest.fn().mockResolvedValue(undefined);
     
     return mock;
   }

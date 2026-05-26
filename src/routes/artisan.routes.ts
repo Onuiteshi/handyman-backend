@@ -3,6 +3,7 @@ import { body, validationResult } from 'express-validator';
 import prisma from '../lib/prisma';
 import { authMiddleware, isArtisan } from '../middleware/auth.middleware';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { registerArtisan } from '../controllers/artisan.controller';
 
 const router = Router();
 
@@ -21,6 +22,12 @@ const validateServiceCategories = [
   body('categoryIds.*').isUUID().withMessage('Invalid category ID format'),
 ];
 
+const validateArtisanRegistration = [
+  body('skills').isArray({ min: 1 }).withMessage('Skills array is required and must not be empty'),
+  body('profilePhotoUrl').notEmpty().withMessage('Profile photo URL is required'),
+  body('documentUrls').optional().isArray().withMessage('Document URLs must be an array'),
+];
+
 // Validation error handler
 const handleValidationErrors = (req: AuthRequest, res: Response, next: NextFunction) => {
   const errors = validationResult(req);
@@ -30,6 +37,9 @@ const handleValidationErrors = (req: AuthRequest, res: Response, next: NextFunct
   }
   next();
 };
+
+// Register artisan (Requirements: 5.1, 9.2, 9.3)
+router.post('/register', [authMiddleware, ...validateArtisanRegistration, handleValidationErrors], registerArtisan);
 
 // Get artisan profile
 router.get('/profile', authMiddleware, isArtisan, async (req: AuthRequest, res: Response, next: NextFunction) => {

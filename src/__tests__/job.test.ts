@@ -53,6 +53,7 @@ describe('Job Management System', () => {
         userId: artisanUser.id,
         skills: ['plumbing', 'electrical'],
         experience: 5,
+        status: 'ACTIVE',
         isOnline: true,
         locationTracking: true,
         latitude: 6.5244,

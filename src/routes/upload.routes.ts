@@ -1,6 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authMiddleware, isArtisan } from '../middleware/auth.middleware';
-import { uploadArtisanPhoto, uploadIdDocument } from '../controllers/upload.controller';
+import { 
+  uploadArtisanPhoto, 
+  uploadIdDocument,
+  uploadArtisanRegistrationPhoto,
+  uploadArtisanRegistrationDocument
+} from '../controllers/upload.controller';
 import upload from '../utils/fileUpload';
 import { AuthRequest } from '../middleware/auth.middleware';
 
@@ -33,6 +38,26 @@ router.post(
   upload.single('document'),
   (req: Request, res: Response, next: NextFunction) => {
     uploadIdDocument(req as any, res, next);
+  }
+);
+
+// Registration-specific endpoints (no auth required, before artisan profile exists)
+
+// Upload artisan registration photo
+router.post(
+  '/artisan-registration-photo',
+  upload.single('photo'),
+  (req: Request, res: Response, next: NextFunction) => {
+    uploadArtisanRegistrationPhoto(req as any, res, next);
+  }
+);
+
+// Upload artisan registration document
+router.post(
+  '/artisan-registration-document',
+  upload.single('document'),
+  (req: Request, res: Response, next: NextFunction) => {
+    uploadArtisanRegistrationDocument(req as any, res, next);
   }
 );
 

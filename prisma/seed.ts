@@ -14,6 +14,13 @@ enum AuthProvider {
   OAUTH_GOOGLE = 'OAUTH_GOOGLE'
 }
 
+enum ProfileStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  SUSPENDED = 'SUSPENDED',
+  PENDING_VERIFICATION = 'PENDING_VERIFICATION'
+}
+
 async function main() {
   console.log('🌱 Starting database seeding...');
 
@@ -174,6 +181,7 @@ async function main() {
               'https://example.com/portfolio/plumbing1.jpg',
               'https://example.com/portfolio/plumbing2.jpg'
             ],
+            status: ProfileStatus.ACTIVE,
             isProfileComplete: true,
             bio: 'Licensed plumber with 8 years of experience in residential and commercial plumbing.',
             photoUrl: 'https://example.com/photos/bob-johnson.jpg',
@@ -206,6 +214,7 @@ async function main() {
               'https://example.com/portfolio/electrical1.jpg',
               'https://example.com/portfolio/electrical2.jpg'
             ],
+            status: ProfileStatus.ACTIVE,
             isProfileComplete: true,
             bio: 'Certified electrician specializing in residential and commercial electrical work.',
             photoUrl: 'https://example.com/photos/sarah-davis.jpg',
@@ -236,6 +245,7 @@ async function main() {
               'https://example.com/portfolio/carpentry1.jpg',
               'https://example.com/portfolio/carpentry2.jpg'
             ],
+            status: ProfileStatus.ACTIVE,
             isProfileComplete: true,
             bio: 'Master carpenter with 15 years of experience in custom woodwork and furniture making.',
             photoUrl: 'https://example.com/photos/tom-anderson.jpg',
